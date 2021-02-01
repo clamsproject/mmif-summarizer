@@ -1,0 +1,7 @@
+<pbcoreDescriptionDocument xmlns="http://www.pbcore.org/PBCore/PBCoreNamespace.html">
+
+  <pbcoreAssetDate dateType="broadcast">$DATE</pbcoreAssetDate>
+
+  <pbcoreIdentifier source="http://americanarchiveinventory.org">$ID</pbcoreIdentifier>
+
+</pbcoreDescriptionDocument>
