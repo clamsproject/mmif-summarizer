@@ -19,8 +19,8 @@ $> python run.py -t
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <pbcoreDescriptionDocument xmlns="http://www.pbcore.org/PBCore/PBCoreNamespace.html">
- <pbcoreAssetDate dateType="broadcast">today</pbcoreAssetDate>
- <pbcoreIdentifier source="http://americanarchiveinventory.org">17</pbcoreIdentifier>
+ <pbcoreAssetDate dateType="broadcast"></pbcoreAssetDate>
+ <pbcoreIdentifier source="http://americanarchiveinventory.org">/var/archive/video-002.mp4</pbcoreIdentifier>
  <pbcoreDescription descriptionType="bars-and-tone" end="2600" start="0"></pbcoreDescription>
  <pbcoreDescription descriptionType="slate" end="5300" start="2700"></pbcoreDescription>
  <pbcoreSubject end="5500" start="0" subjectType="Person">Jim Lehrer</pbcoreSubject>
