@@ -2,7 +2,7 @@
 
 Code to convert an MMIF file to a PBCore document, only keeping those annotations that are useful metadata (and reducing the size of the file by one or two orders of magnitude).
 
-See `run.py` for some of the limitations of the code. One thing that nee
+See `run.py` for some of the limitations of the code. One thing that needs to be stressed is that the pbcoreIdentifier is simply taken from the location.
 
 
 
