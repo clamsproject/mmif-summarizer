@@ -120,7 +120,7 @@
           "@type": "http://mmif.clams.ai/0.2.0/vocabulary/Alignment",
           "properties": {
             "id": "a1",
-            "source": "v3:tf1",
+            "source": "v3:tf2",
             "target": "td1" }
         },
         {

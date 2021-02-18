@@ -1,6 +1,6 @@
 """server.py
 
-The classes in this modeule are all adapted from the clams-python serve and
+The classes in this module are all adapted from the clams-python serve and
 restify modules, but the following changes were made:
 
 - Parameterized the mimetype (since it is probably not standardized).
