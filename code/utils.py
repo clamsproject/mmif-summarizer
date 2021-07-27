@@ -5,11 +5,6 @@ Module with utility methods.
 """
 
 
-def matches(at_type, type_name):
-    """Return True if the @type matches the short name."""
-    return at_type == type_name or at_type.endswith('/' + type_name)
-
-
 def compose_id(view_id, anno_id):
     """Composes the view identifier with the annotation identifier."""
     return anno_id if ':' in anno_id else view_id + ':' + anno_id
@@ -17,13 +12,14 @@ def compose_id(view_id, anno_id):
 
 def type_name(annotation):
     """Return the short name of the type."""
-    return annotation.at_type.split('/')[-1]    
+    return annotation.at_type.split('/')[-1]
 
 
 def get_annotations_from_view(view, annotation_type):
     """Return all annotation from a view that match the annotation type."""
     # TODO: there is probably a method on View for this
-    return [a for a in view.annotations if matches(a.at_type, annotation_type)]
+    return [a for a in view.annotations
+            if a.at_type.shortname == annotation_type]
 
 
 def find_matching_tokens(tokens, ne):

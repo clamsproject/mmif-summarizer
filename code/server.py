@@ -5,8 +5,6 @@ restify modules, but the following changes were made:
 
 - Parameterized the mimetype (since it is probably not standardized).
 
-- Used only GET and POST (future clams-python change).
-
 - POST maps to consume() instead of annotate().
 
 - Renamed appmetadata() into consumermetadata() (since this is not an app).
@@ -38,7 +36,7 @@ class ClamsConsumer(ABC):
         super().__init__()
 
     def consumermetadata(self):
-        return json.dumps(self.metadata)
+        return json.dumps(self.metadata, indent=4)
 
     def consume(self, mmif) -> str:
         return self._consume(mmif)
@@ -55,7 +53,8 @@ class ClamsConsumer(ABC):
 class Restifier(object):
 
     def __init__(self, app_instance,
-                 loopback=False, port=5000, debug=True, mimetype='application/json'):
+                 loopback=False, port=5000, debug=True,
+                 mimetype='application/json'):
         super().__init__()
         self.cla = app_instance
         self.import_name = app_instance.__class__.__name__
@@ -85,7 +84,9 @@ class ClamsConsumerRestfulApi(Resource):
     def response(response_str: str, status=200, mimetype='application/json'):
         if not isinstance(response_str, str):
             response_str = str(response_str)
-        return Response(response=response_str, status=status, mimetype=mimetype)
+        return Response(response=response_str,
+                        status=status,
+                        mimetype=mimetype)
 
     def get(self):
         return self.response(self.cla.consumermetadata())

@@ -1,0 +1,3137 @@
+{
+  "metadata": {
+    "mmif": "http://mmif.clams.ai/0.4.0"
+  },
+  "documents": [
+    {
+      "@type": "http://mmif.clams.ai/0.4.0/vocabulary/VideoDocument",
+      "properties": {
+        "mime": "video/mpeg",
+        "id": "m1",
+        "location": "file:///var/archive/video-002.mp4"
+      }
+    }
+  ],
+  "views": [
+    {
+      "id": "v_1",
+      "metadata": {
+        "timestamp": "2020-05-27T12:23:45",
+        "app": "http://apps.clams.ai/bars-and-tone/1.0.5",
+        "contains": {
+          "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame": {
+            "document": "m1",
+            "unit": "milliseconds"
+          }
+        }
+      },
+      "annotations": [
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "start": 0,
+            "frameType": "bars-and-tone",
+            "end": 2600,
+            "id": "s1"
+          }
+        }
+      ]
+    },
+    {
+      "id": "v_2",
+      "metadata": {
+        "timestamp": "2020-05-27T12:23:45",
+        "app": "http://apps.clams.ai/slates/1.0.3",
+        "contains": {
+          "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame": {
+            "document": "m1",
+            "unit": "milliseconds"
+          }
+        }
+      },
+      "annotations": [
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "start": 2700,
+            "frameType": "slate",
+            "end": 5300,
+            "id": "s1"
+          }
+        }
+      ]
+    },
+    {
+      "id": "v_3",
+      "metadata": {
+        "app": "http://apps.clams.ai/audio-segmenter/0.2.1",
+        "contains": {
+          "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame": {
+            "unit": "milliseconds",
+            "document": "m1"
+          }
+        }
+      },
+      "annotations": [
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "frameType": "non-speech",
+            "start": 0,
+            "end": 5500,
+            "id": "tf1"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "frameType": "speech",
+            "start": 5500,
+            "end": 22000,
+            "id": "tf2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "v_4",
+      "metadata": {
+        "app": "http://apps.clams.ai/kaldi/0.2.1",
+        "contains": {
+          "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument": {},
+          "http://vocab.lappsgrid.org/Token": {
+            "document": "td1"
+          },
+          "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame": {
+            "unit": "milliseconds",
+            "document": "m1"
+          },
+          "http://mmif.clams.ai/0.4.0/vocabulary/Alignment": {}
+        }
+      },
+      "annotations": [
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "Hello, this is Jim Lehrer with the NewsHour on PBS."
+            },
+            "id": "td1"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_3:tf2",
+            "target": "td1",
+            "id": "a1"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "start": 0,
+            "text": "Hello",
+            "end": 5,
+            "id": "t1"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "end": 6085,
+            "start": 5500,
+            "id": "tf1"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "tf1",
+            "target": "t1",
+            "id": "a2"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "start": 5,
+            "text": ",",
+            "end": 6,
+            "id": "t2"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "end": 6202,
+            "start": 6085,
+            "id": "tf2"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "tf2",
+            "target": "t2",
+            "id": "a3"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "start": 7,
+            "text": "this",
+            "end": 11,
+            "id": "t3"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "end": 6787,
+            "start": 6319,
+            "id": "tf3"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "tf3",
+            "target": "t3",
+            "id": "a4"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "start": 12,
+            "text": "is",
+            "end": 14,
+            "id": "t4"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "end": 7138,
+            "start": 6904,
+            "id": "tf4"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "tf4",
+            "target": "t4",
+            "id": "a5"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "start": 15,
+            "text": "Jim",
+            "end": 18,
+            "id": "t5"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "end": 7606,
+            "start": 7255,
+            "id": "tf5"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "tf5",
+            "target": "t5",
+            "id": "a6"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "start": 19,
+            "text": "Lehrer",
+            "end": 25,
+            "id": "t6"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "end": 8425,
+            "start": 7723,
+            "id": "tf6"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "tf6",
+            "target": "t6",
+            "id": "a7"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "start": 26,
+            "text": "with",
+            "end": 30,
+            "id": "t7"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "end": 9010,
+            "start": 8542,
+            "id": "tf7"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "tf7",
+            "target": "t7",
+            "id": "a8"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "start": 31,
+            "text": "the",
+            "end": 34,
+            "id": "t8"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "end": 9478,
+            "start": 9127,
+            "id": "tf8"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "tf8",
+            "target": "t8",
+            "id": "a9"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "start": 35,
+            "text": "NewsHour",
+            "end": 43,
+            "id": "t9"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "end": 10531,
+            "start": 9595,
+            "id": "tf9"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "tf9",
+            "target": "t9",
+            "id": "a10"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "start": 44,
+            "text": "on",
+            "end": 46,
+            "id": "t10"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "end": 10882,
+            "start": 10648,
+            "id": "tf10"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "tf10",
+            "target": "t10",
+            "id": "a11"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "start": 47,
+            "text": "PBS",
+            "end": 50,
+            "id": "t11"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "end": 11350,
+            "start": 10999,
+            "id": "tf11"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "tf11",
+            "target": "t11",
+            "id": "a12"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "start": 50,
+            "text": ".",
+            "end": 51,
+            "id": "t12"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TimeFrame",
+          "properties": {
+            "end": 11467,
+            "start": 11350,
+            "id": "tf12"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "tf12",
+            "target": "t12",
+            "id": "a13"
+          }
+        }
+      ]
+    },
+    {
+      "id": "v_5",
+      "metadata": {
+        "app": "http://apps.clams.ai/east/0.2.1",
+        "contains": {
+          "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox": {
+            "unit": "pixels",
+            "document": "m1"
+          }
+        }
+      },
+      "annotations": [
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 3000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                180,
+                110
+              ],
+              [
+                460,
+                110
+              ],
+              [
+                180,
+                170
+              ],
+              [
+                460,
+                170
+              ]
+            ],
+            "id": "bb1"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 3000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                660,
+                110
+              ],
+              [
+                1250,
+                110
+              ],
+              [
+                660,
+                170
+              ],
+              [
+                1250,
+                170
+              ]
+            ],
+            "id": "bb2"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 3000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                180,
+                320
+              ],
+              [
+                460,
+                320
+              ],
+              [
+                180,
+                380
+              ],
+              [
+                460,
+                380
+              ]
+            ],
+            "id": "bb3"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 3000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                660,
+                320
+              ],
+              [
+                1210,
+                320
+              ],
+              [
+                660,
+                380
+              ],
+              [
+                1210,
+                380
+              ]
+            ],
+            "id": "bb4"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 3000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                180,
+                520
+              ],
+              [
+                460,
+                520
+              ],
+              [
+                180,
+                580
+              ],
+              [
+                460,
+                580
+              ]
+            ],
+            "id": "bb5"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 3000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                660,
+                520
+              ],
+              [
+                1200,
+                520
+              ],
+              [
+                660,
+                580
+              ],
+              [
+                1200,
+                580
+              ]
+            ],
+            "id": "bb6"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 3000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                180,
+                750
+              ],
+              [
+                470,
+                750
+              ],
+              [
+                180,
+                810
+              ],
+              [
+                470,
+                810
+              ]
+            ],
+            "id": "bb7"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 3000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                660,
+                750
+              ],
+              [
+                1180,
+                750
+              ],
+              [
+                660,
+                810
+              ],
+              [
+                1180,
+                810
+              ]
+            ],
+            "id": "bb8"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 4000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                180,
+                110
+              ],
+              [
+                460,
+                110
+              ],
+              [
+                180,
+                170
+              ],
+              [
+                460,
+                170
+              ]
+            ],
+            "id": "bb9"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 4000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                660,
+                110
+              ],
+              [
+                1250,
+                110
+              ],
+              [
+                660,
+                170
+              ],
+              [
+                1250,
+                170
+              ]
+            ],
+            "id": "bb10"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 4000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                180,
+                320
+              ],
+              [
+                460,
+                320
+              ],
+              [
+                180,
+                380
+              ],
+              [
+                460,
+                380
+              ]
+            ],
+            "id": "bb11"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 4000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                660,
+                320
+              ],
+              [
+                1210,
+                320
+              ],
+              [
+                660,
+                380
+              ],
+              [
+                1210,
+                380
+              ]
+            ],
+            "id": "bb12"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 4000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                180,
+                520
+              ],
+              [
+                460,
+                520
+              ],
+              [
+                180,
+                580
+              ],
+              [
+                460,
+                580
+              ]
+            ],
+            "id": "bb13"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 4000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                660,
+                520
+              ],
+              [
+                1200,
+                520
+              ],
+              [
+                660,
+                580
+              ],
+              [
+                1200,
+                580
+              ]
+            ],
+            "id": "bb14"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 4000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                180,
+                750
+              ],
+              [
+                470,
+                750
+              ],
+              [
+                180,
+                810
+              ],
+              [
+                470,
+                810
+              ]
+            ],
+            "id": "bb15"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 4000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                660,
+                750
+              ],
+              [
+                1180,
+                750
+              ],
+              [
+                660,
+                810
+              ],
+              [
+                1180,
+                810
+              ]
+            ],
+            "id": "bb16"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 5000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                180,
+                110
+              ],
+              [
+                460,
+                110
+              ],
+              [
+                180,
+                170
+              ],
+              [
+                460,
+                170
+              ]
+            ],
+            "id": "bb17"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 5000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                660,
+                110
+              ],
+              [
+                1250,
+                110
+              ],
+              [
+                660,
+                170
+              ],
+              [
+                1250,
+                170
+              ]
+            ],
+            "id": "bb18"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 5000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                180,
+                320
+              ],
+              [
+                460,
+                320
+              ],
+              [
+                180,
+                380
+              ],
+              [
+                460,
+                380
+              ]
+            ],
+            "id": "bb19"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 5000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                660,
+                320
+              ],
+              [
+                1210,
+                320
+              ],
+              [
+                660,
+                380
+              ],
+              [
+                1210,
+                380
+              ]
+            ],
+            "id": "bb20"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 5000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                180,
+                520
+              ],
+              [
+                460,
+                520
+              ],
+              [
+                180,
+                580
+              ],
+              [
+                460,
+                580
+              ]
+            ],
+            "id": "bb21"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 5000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                660,
+                520
+              ],
+              [
+                1200,
+                520
+              ],
+              [
+                660,
+                580
+              ],
+              [
+                1200,
+                580
+              ]
+            ],
+            "id": "bb22"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 5000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                180,
+                750
+              ],
+              [
+                470,
+                750
+              ],
+              [
+                180,
+                810
+              ],
+              [
+                470,
+                810
+              ]
+            ],
+            "id": "bb23"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 5000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                660,
+                750
+              ],
+              [
+                1180,
+                750
+              ],
+              [
+                660,
+                810
+              ],
+              [
+                1180,
+                810
+              ]
+            ],
+            "id": "bb24"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
+          "properties": {
+            "timePoint": 21000,
+            "boxType": "text",
+            "coordinates": [
+              [
+                150,
+                810
+              ],
+              [
+                1120,
+                810
+              ],
+              [
+                150,
+                870
+              ],
+              [
+                1120,
+                870
+              ]
+            ],
+            "id": "bb25"
+          }
+        }
+      ]
+    },
+    {
+      "id": "v_6",
+      "metadata": {
+        "app": "http://apps.clams.ai/tesseract/0.2.1",
+        "contains": {
+          "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument": {},
+          "http://mmif.clams.ai/0.4.0/vocabulary/Alignment": {}
+        }
+      },
+      "annotations": [
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "DATE"
+            },
+            "id": "td1"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb1",
+            "target": "td1",
+            "id": "a1"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "1982-05-12"
+            },
+            "id": "td2"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb2",
+            "target": "td2",
+            "id": "a2"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "TITLE"
+            },
+            "id": "td3"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb3",
+            "target": "td3",
+            "id": "a3"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "Loud Dogs"
+            },
+            "id": "td4"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb4",
+            "target": "td4",
+            "id": "a4"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "HOST"
+            },
+            "id": "td5"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb5",
+            "target": "td5",
+            "id": "a5"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "Jim Lehrer"
+            },
+            "id": "td6"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb6",
+            "target": "td6",
+            "id": "a6"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "PROD"
+            },
+            "id": "td7"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb7",
+            "target": "td7",
+            "id": "a7"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "Sara Just"
+            },
+            "id": "td8"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb8",
+            "target": "td8",
+            "id": "a8"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "DATE"
+            },
+            "id": "td9"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb9",
+            "target": "td9",
+            "id": "a9"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "1982-05-12"
+            },
+            "id": "td10"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb10",
+            "target": "td10",
+            "id": "a10"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "TITLE"
+            },
+            "id": "td11"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb11",
+            "target": "td11",
+            "id": "a11"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "Loud Dogs"
+            },
+            "id": "td12"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb12",
+            "target": "td12",
+            "id": "a12"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "HOST"
+            },
+            "id": "td13"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb13",
+            "target": "td13",
+            "id": "a13"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "Jim Lehrer"
+            },
+            "id": "td14"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb14",
+            "target": "td14",
+            "id": "a14"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "PROD"
+            },
+            "id": "td15"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb15",
+            "target": "td15",
+            "id": "a15"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "Sara Just"
+            },
+            "id": "td16"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb16",
+            "target": "td16",
+            "id": "a16"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "DATE"
+            },
+            "id": "td17"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb17",
+            "target": "td17",
+            "id": "a17"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "1982-05-12"
+            },
+            "id": "td18"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb18",
+            "target": "td18",
+            "id": "a18"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "TITLE"
+            },
+            "id": "td19"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb19",
+            "target": "td19",
+            "id": "a19"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "Loud Dogs"
+            },
+            "id": "td20"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb20",
+            "target": "td20",
+            "id": "a20"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "HOST"
+            },
+            "id": "td21"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb21",
+            "target": "td21",
+            "id": "a21"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "Jim Lehrer"
+            },
+            "id": "td22"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb22",
+            "target": "td22",
+            "id": "a22"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "PROD"
+            },
+            "id": "td23"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb23",
+            "target": "td23",
+            "id": "a23"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "Sara Just"
+            },
+            "id": "td24"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb24",
+            "target": "td24",
+            "id": "a24"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
+          "properties": {
+            "text": {
+              "@value": "Dog in New York"
+            },
+            "id": "td25"
+          }
+        },
+        {
+          "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",
+          "properties": {
+            "source": "v_5:bb25",
+            "target": "td25",
+            "id": "a25"
+          }
+        }
+      ]
+    },
+    {
+      "id": "v_7",
+      "metadata": {
+        "timestamp": "2020-05-27T12:23:45",
+        "app": "http://apps.clams.ai/slate-parser/1.0.2",
+        "contains": {
+          "http://vocab.lappsgrid.org/SemanticTag": {}
+        }
+      },
+      "annotations": [
+        {
+          "@type": "http://vocab.lappsgrid.org/SemanticTag",
+          "properties": {
+            "document": "v_6:td2",
+            "tagName": "Date",
+            "start": 0,
+            "text": "1982-05-12",
+            "end": 10,
+            "id": "st1"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/SemanticTag",
+          "properties": {
+            "document": "v_6:td4",
+            "tagName": "Title",
+            "start": 0,
+            "text": "Loud Dogs",
+            "end": 9,
+            "id": "st2"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/SemanticTag",
+          "properties": {
+            "document": "v_6:td6",
+            "tagName": "Host",
+            "start": 0,
+            "text": "Jim Lehrer",
+            "end": 10,
+            "id": "st3"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/SemanticTag",
+          "properties": {
+            "document": "v_6:td8",
+            "tagName": "Producer",
+            "start": 0,
+            "text": "Sara Just",
+            "end": 9,
+            "id": "st4"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/SemanticTag",
+          "properties": {
+            "document": "v_6:td10",
+            "tagName": "Date",
+            "start": 0,
+            "text": "1982-05-12",
+            "end": 10,
+            "id": "st5"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/SemanticTag",
+          "properties": {
+            "document": "v_6:td12",
+            "tagName": "Title",
+            "start": 0,
+            "text": "Loud Dogs",
+            "end": 9,
+            "id": "st6"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/SemanticTag",
+          "properties": {
+            "document": "v_6:td14",
+            "tagName": "Host",
+            "start": 0,
+            "text": "Jim Lehrer",
+            "end": 10,
+            "id": "st7"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/SemanticTag",
+          "properties": {
+            "document": "v_6:td16",
+            "tagName": "Producer",
+            "start": 0,
+            "text": "Sara Just",
+            "end": 9,
+            "id": "st8"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/SemanticTag",
+          "properties": {
+            "document": "v_6:td18",
+            "tagName": "Date",
+            "start": 0,
+            "text": "1982-05-12",
+            "end": 10,
+            "id": "st9"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/SemanticTag",
+          "properties": {
+            "document": "v_6:td20",
+            "tagName": "Title",
+            "start": 0,
+            "text": "Loud Dogs",
+            "end": 9,
+            "id": "st10"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/SemanticTag",
+          "properties": {
+            "document": "v_6:td22",
+            "tagName": "Host",
+            "start": 0,
+            "text": "Jim Lehrer",
+            "end": 10,
+            "id": "st11"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/SemanticTag",
+          "properties": {
+            "document": "v_6:td24",
+            "tagName": "Producer",
+            "start": 0,
+            "text": "Sara Just",
+            "end": 9,
+            "id": "st12"
+          }
+        }
+      ]
+    },
+    {
+      "id": "v_8",
+      "metadata": {
+        "timestamp": "2021-07-23T13:36:21.845035",
+        "app": "https://apps.clams.ai/spacy_nlp",
+        "contains": {
+          "http://vocab.lappsgrid.org/Token": {},
+          "http://vocab.lappsgrid.org/Token#pos": {},
+          "http://vocab.lappsgrid.org/Token#lemma": {},
+          "http://vocab.lappsgrid.org/NounChunk": {},
+          "http://vocab.lappsgrid.org/Sentence": {},
+          "http://vocab.lappsgrid.org/NamedEntity": {}
+        }
+      },
+      "annotations": [
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 0,
+            "end": 5,
+            "pos": "UH",
+            "lemma": "hello",
+            "text": "Hello",
+            "id": "t1"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 5,
+            "end": 6,
+            "pos": ",",
+            "lemma": ",",
+            "text": ",",
+            "id": "t2"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 7,
+            "end": 11,
+            "pos": "DT",
+            "lemma": "this",
+            "text": "this",
+            "id": "t3"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 12,
+            "end": 14,
+            "pos": "VBZ",
+            "lemma": "be",
+            "text": "is",
+            "id": "t4"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 15,
+            "end": 18,
+            "pos": "NNP",
+            "lemma": "Jim",
+            "text": "Jim",
+            "id": "t5"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 19,
+            "end": 25,
+            "pos": "NNP",
+            "lemma": "Lehrer",
+            "text": "Lehrer",
+            "id": "t6"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 26,
+            "end": 30,
+            "pos": "IN",
+            "lemma": "with",
+            "text": "with",
+            "id": "t7"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 31,
+            "end": 34,
+            "pos": "DT",
+            "lemma": "the",
+            "text": "the",
+            "id": "t8"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 35,
+            "end": 43,
+            "pos": "NNP",
+            "lemma": "NewsHour",
+            "text": "NewsHour",
+            "id": "t9"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 44,
+            "end": 46,
+            "pos": "IN",
+            "lemma": "on",
+            "text": "on",
+            "id": "t10"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 47,
+            "end": 50,
+            "pos": "NNP",
+            "lemma": "PBS",
+            "text": "PBS",
+            "id": "t11"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 50,
+            "end": 51,
+            "pos": ".",
+            "lemma": ".",
+            "text": ".",
+            "id": "t12"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 15,
+            "end": 25,
+            "text": "Jim Lehrer",
+            "id": "nc1"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 31,
+            "end": 43,
+            "text": "the NewsHour",
+            "id": "nc2"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 47,
+            "end": 50,
+            "text": "PBS",
+            "id": "nc3"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 0,
+            "end": 51,
+            "text": "Hello, this is Jim Lehrer with the NewsHour on PBS.",
+            "id": "s1"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NamedEntity",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 15,
+            "end": 25,
+            "text": "Jim Lehrer",
+            "category": "PERSON",
+            "id": "ne2"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NamedEntity",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 35,
+            "end": 43,
+            "text": "NewsHour",
+            "category": "PRODUCT",
+            "id": "ne4"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NamedEntity",
+          "properties": {
+            "document": "v_4:td1",
+            "start": 47,
+            "end": 50,
+            "text": "PBS",
+            "category": "ORG",
+            "id": "ne6"
+          }
+        }
+      ]
+    },
+    {
+      "id": "v_9",
+      "metadata": {
+        "timestamp": "2021-07-23T13:36:21.854547",
+        "app": "https://apps.clams.ai/spacy_nlp",
+        "contains": {
+          "http://vocab.lappsgrid.org/Token": {},
+          "http://vocab.lappsgrid.org/Token#pos": {},
+          "http://vocab.lappsgrid.org/Token#lemma": {},
+          "http://vocab.lappsgrid.org/NounChunk": {},
+          "http://vocab.lappsgrid.org/Sentence": {},
+          "http://vocab.lappsgrid.org/NamedEntity": {}
+        }
+      },
+      "annotations": [
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td1",
+            "start": 0,
+            "end": 4,
+            "pos": "NN",
+            "lemma": "date",
+            "text": "DATE",
+            "id": "t13"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td1",
+            "start": 0,
+            "end": 4,
+            "text": "DATE",
+            "id": "nc4"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td1",
+            "start": 0,
+            "end": 4,
+            "text": "DATE",
+            "id": "s2"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td2",
+            "start": 0,
+            "end": 4,
+            "pos": "CD",
+            "lemma": "1982",
+            "text": "1982",
+            "id": "t14"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td2",
+            "start": 4,
+            "end": 5,
+            "pos": "SYM",
+            "lemma": "-",
+            "text": "-",
+            "id": "t15"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td2",
+            "start": 5,
+            "end": 7,
+            "pos": "CD",
+            "lemma": "05",
+            "text": "05",
+            "id": "t16"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td2",
+            "start": 7,
+            "end": 8,
+            "pos": "SYM",
+            "lemma": "-",
+            "text": "-",
+            "id": "t17"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td2",
+            "start": 8,
+            "end": 10,
+            "pos": "CD",
+            "lemma": "12",
+            "text": "12",
+            "id": "t18"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td2",
+            "start": 0,
+            "end": 10,
+            "text": "1982-05-12",
+            "id": "s3"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NamedEntity",
+          "properties": {
+            "document": "v_6:td2",
+            "start": 0,
+            "end": 10,
+            "text": "1982-05-12",
+            "category": "DATE",
+            "id": "ne8"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td3",
+            "start": 0,
+            "end": 5,
+            "pos": "NN",
+            "lemma": "title",
+            "text": "TITLE",
+            "id": "t19"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td3",
+            "start": 0,
+            "end": 5,
+            "text": "TITLE",
+            "id": "nc5"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td3",
+            "start": 0,
+            "end": 5,
+            "text": "TITLE",
+            "id": "s4"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td4",
+            "start": 0,
+            "end": 4,
+            "pos": "JJ",
+            "lemma": "loud",
+            "text": "Loud",
+            "id": "t20"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td4",
+            "start": 5,
+            "end": 9,
+            "pos": "NNS",
+            "lemma": "dog",
+            "text": "Dogs",
+            "id": "t21"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td4",
+            "start": 0,
+            "end": 9,
+            "text": "Loud Dogs",
+            "id": "nc6"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td4",
+            "start": 0,
+            "end": 9,
+            "text": "Loud Dogs",
+            "id": "s5"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td5",
+            "start": 0,
+            "end": 4,
+            "pos": "NN",
+            "lemma": "host",
+            "text": "HOST",
+            "id": "t22"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td5",
+            "start": 0,
+            "end": 4,
+            "text": "HOST",
+            "id": "nc7"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td5",
+            "start": 0,
+            "end": 4,
+            "text": "HOST",
+            "id": "s6"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NamedEntity",
+          "properties": {
+            "document": "v_6:td5",
+            "start": 0,
+            "end": 4,
+            "text": "HOST",
+            "category": "ORG",
+            "id": "ne10"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td6",
+            "start": 0,
+            "end": 3,
+            "pos": "NNP",
+            "lemma": "Jim",
+            "text": "Jim",
+            "id": "t23"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td6",
+            "start": 4,
+            "end": 10,
+            "pos": "NNP",
+            "lemma": "Lehrer",
+            "text": "Lehrer",
+            "id": "t24"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td6",
+            "start": 0,
+            "end": 10,
+            "text": "Jim Lehrer",
+            "id": "nc8"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td6",
+            "start": 0,
+            "end": 10,
+            "text": "Jim Lehrer",
+            "id": "s7"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NamedEntity",
+          "properties": {
+            "document": "v_6:td6",
+            "start": 0,
+            "end": 10,
+            "text": "Jim Lehrer",
+            "category": "PERSON",
+            "id": "ne12"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td7",
+            "start": 0,
+            "end": 4,
+            "pos": "NNP",
+            "lemma": "PROD",
+            "text": "PROD",
+            "id": "t25"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td7",
+            "start": 0,
+            "end": 4,
+            "text": "PROD",
+            "id": "nc9"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td7",
+            "start": 0,
+            "end": 4,
+            "text": "PROD",
+            "id": "s8"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td8",
+            "start": 0,
+            "end": 4,
+            "pos": "NNP",
+            "lemma": "Sara",
+            "text": "Sara",
+            "id": "t26"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td8",
+            "start": 5,
+            "end": 9,
+            "pos": "RB",
+            "lemma": "just",
+            "text": "Just",
+            "id": "t27"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td8",
+            "start": 0,
+            "end": 4,
+            "text": "Sara",
+            "id": "nc10"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td8",
+            "start": 0,
+            "end": 4,
+            "text": "Sara",
+            "id": "s9"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td8",
+            "start": 5,
+            "end": 9,
+            "text": "Just",
+            "id": "s10"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td9",
+            "start": 0,
+            "end": 4,
+            "pos": "NN",
+            "lemma": "date",
+            "text": "DATE",
+            "id": "t28"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td9",
+            "start": 0,
+            "end": 4,
+            "text": "DATE",
+            "id": "nc11"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td9",
+            "start": 0,
+            "end": 4,
+            "text": "DATE",
+            "id": "s11"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td10",
+            "start": 0,
+            "end": 4,
+            "pos": "CD",
+            "lemma": "1982",
+            "text": "1982",
+            "id": "t29"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td10",
+            "start": 4,
+            "end": 5,
+            "pos": "SYM",
+            "lemma": "-",
+            "text": "-",
+            "id": "t30"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td10",
+            "start": 5,
+            "end": 7,
+            "pos": "CD",
+            "lemma": "05",
+            "text": "05",
+            "id": "t31"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td10",
+            "start": 7,
+            "end": 8,
+            "pos": "SYM",
+            "lemma": "-",
+            "text": "-",
+            "id": "t32"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td10",
+            "start": 8,
+            "end": 10,
+            "pos": "CD",
+            "lemma": "12",
+            "text": "12",
+            "id": "t33"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td10",
+            "start": 0,
+            "end": 10,
+            "text": "1982-05-12",
+            "id": "s12"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NamedEntity",
+          "properties": {
+            "document": "v_6:td10",
+            "start": 0,
+            "end": 10,
+            "text": "1982-05-12",
+            "category": "DATE",
+            "id": "ne14"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td11",
+            "start": 0,
+            "end": 5,
+            "pos": "NN",
+            "lemma": "title",
+            "text": "TITLE",
+            "id": "t34"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td11",
+            "start": 0,
+            "end": 5,
+            "text": "TITLE",
+            "id": "nc12"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td11",
+            "start": 0,
+            "end": 5,
+            "text": "TITLE",
+            "id": "s13"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td12",
+            "start": 0,
+            "end": 4,
+            "pos": "JJ",
+            "lemma": "loud",
+            "text": "Loud",
+            "id": "t35"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td12",
+            "start": 5,
+            "end": 9,
+            "pos": "NNS",
+            "lemma": "dog",
+            "text": "Dogs",
+            "id": "t36"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td12",
+            "start": 0,
+            "end": 9,
+            "text": "Loud Dogs",
+            "id": "nc13"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td12",
+            "start": 0,
+            "end": 9,
+            "text": "Loud Dogs",
+            "id": "s14"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td13",
+            "start": 0,
+            "end": 4,
+            "pos": "NN",
+            "lemma": "host",
+            "text": "HOST",
+            "id": "t37"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td13",
+            "start": 0,
+            "end": 4,
+            "text": "HOST",
+            "id": "nc14"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td13",
+            "start": 0,
+            "end": 4,
+            "text": "HOST",
+            "id": "s15"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NamedEntity",
+          "properties": {
+            "document": "v_6:td13",
+            "start": 0,
+            "end": 4,
+            "text": "HOST",
+            "category": "ORG",
+            "id": "ne16"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td14",
+            "start": 0,
+            "end": 3,
+            "pos": "NNP",
+            "lemma": "Jim",
+            "text": "Jim",
+            "id": "t38"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td14",
+            "start": 4,
+            "end": 10,
+            "pos": "NNP",
+            "lemma": "Lehrer",
+            "text": "Lehrer",
+            "id": "t39"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td14",
+            "start": 0,
+            "end": 10,
+            "text": "Jim Lehrer",
+            "id": "nc15"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td14",
+            "start": 0,
+            "end": 10,
+            "text": "Jim Lehrer",
+            "id": "s16"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NamedEntity",
+          "properties": {
+            "document": "v_6:td14",
+            "start": 0,
+            "end": 10,
+            "text": "Jim Lehrer",
+            "category": "PERSON",
+            "id": "ne18"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td15",
+            "start": 0,
+            "end": 4,
+            "pos": "NNP",
+            "lemma": "PROD",
+            "text": "PROD",
+            "id": "t40"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td15",
+            "start": 0,
+            "end": 4,
+            "text": "PROD",
+            "id": "nc16"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td15",
+            "start": 0,
+            "end": 4,
+            "text": "PROD",
+            "id": "s17"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td16",
+            "start": 0,
+            "end": 4,
+            "pos": "NNP",
+            "lemma": "Sara",
+            "text": "Sara",
+            "id": "t41"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td16",
+            "start": 5,
+            "end": 9,
+            "pos": "RB",
+            "lemma": "just",
+            "text": "Just",
+            "id": "t42"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td16",
+            "start": 0,
+            "end": 4,
+            "text": "Sara",
+            "id": "nc17"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td16",
+            "start": 0,
+            "end": 4,
+            "text": "Sara",
+            "id": "s18"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td16",
+            "start": 5,
+            "end": 9,
+            "text": "Just",
+            "id": "s19"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td17",
+            "start": 0,
+            "end": 4,
+            "pos": "NN",
+            "lemma": "date",
+            "text": "DATE",
+            "id": "t43"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td17",
+            "start": 0,
+            "end": 4,
+            "text": "DATE",
+            "id": "nc18"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td17",
+            "start": 0,
+            "end": 4,
+            "text": "DATE",
+            "id": "s20"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td18",
+            "start": 0,
+            "end": 4,
+            "pos": "CD",
+            "lemma": "1982",
+            "text": "1982",
+            "id": "t44"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td18",
+            "start": 4,
+            "end": 5,
+            "pos": "SYM",
+            "lemma": "-",
+            "text": "-",
+            "id": "t45"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td18",
+            "start": 5,
+            "end": 7,
+            "pos": "CD",
+            "lemma": "05",
+            "text": "05",
+            "id": "t46"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td18",
+            "start": 7,
+            "end": 8,
+            "pos": "SYM",
+            "lemma": "-",
+            "text": "-",
+            "id": "t47"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td18",
+            "start": 8,
+            "end": 10,
+            "pos": "CD",
+            "lemma": "12",
+            "text": "12",
+            "id": "t48"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td18",
+            "start": 0,
+            "end": 10,
+            "text": "1982-05-12",
+            "id": "s21"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NamedEntity",
+          "properties": {
+            "document": "v_6:td18",
+            "start": 0,
+            "end": 10,
+            "text": "1982-05-12",
+            "category": "DATE",
+            "id": "ne20"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td19",
+            "start": 0,
+            "end": 5,
+            "pos": "NN",
+            "lemma": "title",
+            "text": "TITLE",
+            "id": "t49"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td19",
+            "start": 0,
+            "end": 5,
+            "text": "TITLE",
+            "id": "nc19"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td19",
+            "start": 0,
+            "end": 5,
+            "text": "TITLE",
+            "id": "s22"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td20",
+            "start": 0,
+            "end": 4,
+            "pos": "JJ",
+            "lemma": "loud",
+            "text": "Loud",
+            "id": "t50"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td20",
+            "start": 5,
+            "end": 9,
+            "pos": "NNS",
+            "lemma": "dog",
+            "text": "Dogs",
+            "id": "t51"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td20",
+            "start": 0,
+            "end": 9,
+            "text": "Loud Dogs",
+            "id": "nc20"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td20",
+            "start": 0,
+            "end": 9,
+            "text": "Loud Dogs",
+            "id": "s23"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td21",
+            "start": 0,
+            "end": 4,
+            "pos": "NN",
+            "lemma": "host",
+            "text": "HOST",
+            "id": "t52"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td21",
+            "start": 0,
+            "end": 4,
+            "text": "HOST",
+            "id": "nc21"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td21",
+            "start": 0,
+            "end": 4,
+            "text": "HOST",
+            "id": "s24"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NamedEntity",
+          "properties": {
+            "document": "v_6:td21",
+            "start": 0,
+            "end": 4,
+            "text": "HOST",
+            "category": "ORG",
+            "id": "ne22"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td22",
+            "start": 0,
+            "end": 3,
+            "pos": "NNP",
+            "lemma": "Jim",
+            "text": "Jim",
+            "id": "t53"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td22",
+            "start": 4,
+            "end": 10,
+            "pos": "NNP",
+            "lemma": "Lehrer",
+            "text": "Lehrer",
+            "id": "t54"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td22",
+            "start": 0,
+            "end": 10,
+            "text": "Jim Lehrer",
+            "id": "nc22"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td22",
+            "start": 0,
+            "end": 10,
+            "text": "Jim Lehrer",
+            "id": "s25"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NamedEntity",
+          "properties": {
+            "document": "v_6:td22",
+            "start": 0,
+            "end": 10,
+            "text": "Jim Lehrer",
+            "category": "PERSON",
+            "id": "ne24"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td23",
+            "start": 0,
+            "end": 4,
+            "pos": "NNP",
+            "lemma": "PROD",
+            "text": "PROD",
+            "id": "t55"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td23",
+            "start": 0,
+            "end": 4,
+            "text": "PROD",
+            "id": "nc23"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td23",
+            "start": 0,
+            "end": 4,
+            "text": "PROD",
+            "id": "s26"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td24",
+            "start": 0,
+            "end": 4,
+            "pos": "NNP",
+            "lemma": "Sara",
+            "text": "Sara",
+            "id": "t56"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td24",
+            "start": 5,
+            "end": 9,
+            "pos": "RB",
+            "lemma": "just",
+            "text": "Just",
+            "id": "t57"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td24",
+            "start": 0,
+            "end": 4,
+            "text": "Sara",
+            "id": "nc24"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td24",
+            "start": 0,
+            "end": 4,
+            "text": "Sara",
+            "id": "s27"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td24",
+            "start": 5,
+            "end": 9,
+            "text": "Just",
+            "id": "s28"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td25",
+            "start": 0,
+            "end": 3,
+            "pos": "NNP",
+            "lemma": "Dog",
+            "text": "Dog",
+            "id": "t58"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td25",
+            "start": 4,
+            "end": 6,
+            "pos": "IN",
+            "lemma": "in",
+            "text": "in",
+            "id": "t59"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td25",
+            "start": 7,
+            "end": 10,
+            "pos": "NNP",
+            "lemma": "New",
+            "text": "New",
+            "id": "t60"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Token",
+          "properties": {
+            "document": "v_6:td25",
+            "start": 11,
+            "end": 15,
+            "pos": "NNP",
+            "lemma": "York",
+            "text": "York",
+            "id": "t61"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td25",
+            "start": 0,
+            "end": 3,
+            "text": "Dog",
+            "id": "nc25"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NounChunk",
+          "properties": {
+            "document": "v_6:td25",
+            "start": 7,
+            "end": 15,
+            "text": "New York",
+            "id": "nc26"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/Sentence",
+          "properties": {
+            "document": "v_6:td25",
+            "start": 0,
+            "end": 15,
+            "text": "Dog in New York",
+            "id": "s29"
+          }
+        },
+        {
+          "@type": "http://vocab.lappsgrid.org/NamedEntity",
+          "properties": {
+            "document": "v_6:td25",
+            "start": 7,
+            "end": 15,
+            "text": "New York",
+            "category": "GPE",
+            "id": "ne26"
+          }
+        }
+      ]
+    }
+  ]
+}

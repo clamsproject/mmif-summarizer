@@ -8,14 +8,14 @@ See `code/run.py` for some of the limitations of the code. One thing that needs 
 
 ## Usage
 
-To test the application by just running the converter on the sample input document:
+To test the application by just running the converter on one of the sample input documents: `input-v7.mmif` and `input-v9.mmif`. The first has seven manually created views iews from the following applications: bars-and-tone, slates, audio-segmenter, kaldi, east, tesseract and slate-parser. The second has two views added by the app-spacy-nlp application.
 
 ```bash
 $> cd code
-$> python run.py -t
+$> python run.py -t input-v9.mmif
 ```
 
- The output should be something like
+The output should be something like
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -49,7 +49,7 @@ To start a Flask server:
 $> python run.py
 ```
 
-To ping it (do this from a different terminal than the run.py script):
+To ping it (do this from a different terminal than the run.py script, but from the directory that has `input.mmif`):
 
 ```bash
 $> curl -X GET http://0.0.0.0:5000/
@@ -73,7 +73,7 @@ Entering the container and testing the converter:
 
 ```bash
 $> docker run --rm -it mmif-pbcore-converter bash
-$> python run.py -t
+$> python run.py -t input.mmif
 ```
 
  In real life, the second prompt will be the container prompt, something like `root@f9deb9a6115f:/app#`.
