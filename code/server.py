@@ -4,13 +4,9 @@ The classes in this module are all adapted from the clams-python serve and
 restify modules, but the following changes were made:
 
 - Parameterized the mimetype (since it is probably not standardized).
-
 - POST maps to consume() instead of annotate().
-
 - Renamed appmetadata() into consumermetadata() (since this is not an app).
-
 - Replaced App in classnames with Consumer.
-
 - Made some changes to follow the new app signatures of using appmetadata()
   versus _appmetadata() and annotate() versus _annotate(), the latter two
   renamed for consumers.
@@ -36,7 +32,7 @@ class ClamsConsumer(ABC):
         super().__init__()
 
     def consumermetadata(self):
-        return json.dumps(self.metadata, indent=4)
+        return self.metadata.json(indent=2)
 
     def consume(self, mmif) -> str:
         return self._consume(mmif)
