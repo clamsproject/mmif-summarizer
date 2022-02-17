@@ -39,7 +39,6 @@ class Graph(object):
         tokens = self.get_nodes(names.TOKEN)
         entities = self.get_nodes(names.NAMED_ENTITY)
         self.token_idx = TokenIndex(tokens)
-        self.token_idx.pp('pp-tokens.txt')
         for e in entities:
             e.tokens = self.token_idx.get_tokens_for_node(e)
 
@@ -130,8 +129,9 @@ class Node(object):
         self.view = view
         self.annotation = annotation
         self.at_type = annotation.at_type
-        self.properties = json.loads(str(annotation.properties))
         self.identifier = self._create_identifier()
+        # copy the properties to the top-level, where we can edit them
+        self.properties = json.loads(str(annotation.properties))
         # The targets property contains a list of annotations or documents that
         # the node content points to. This includes the document the annotation
         # points to (which is calculated right here) as well as the alignment
@@ -140,13 +140,15 @@ class Node(object):
         target = self._get_document()
         self.targets = [] if target is None else [target]
         self.document = target
+        # Will be filled in the first time the summary() method is used
+        self.summary = None
 
     def __str__(self):
         anchor = ''
         if self.at_type.shortname == names.TOKEN:
-            anchor =  " %s:%s '%s'" % (self.annotation.properties['start'],
-                                       self.annotation.properties['end'],
-                                       self.annotation.properties['text'])
+            anchor =  " %s:%s '%s'" % (self.properties['start'],
+                                       self.properties['end'],
+                                       self.properties['text'])
         return "<%s %s%s>" % (self.at_type.shortname, self.identifier, anchor)
 
     def _get_view_id(self):
@@ -185,6 +187,11 @@ class Node(object):
                 return None
         return None
 
+    def _get_document_plus_span(self):
+        props = self.properties
+        return "%s:%s:%s" % (self.document.identifier,
+                             props['start'], props['end'])
+
     def _adjust_identifier(self, docid):
         """Compose the identifier if needed."""
         if docid is None:
@@ -215,25 +222,26 @@ class TimeFrameNode(Node):
     def __str__(self):
         return '<Timeframe %s:%s %s:%s %s>' % (
             self.view.id,
-            self.annotation.properties['id'],
-            self.annotation.properties['start'],
-            self.annotation.properties['end'],
+            self.properties['id'],
+            self.properties['start'],
+            self.properties['end'],
             self.frame_type())
 
     def frame_type(self):
-        try:
-            return self.annotation.properties['frameType']
-        except KeyError:
-            return None
+        return self.properties.get('frameType')
 
     def has_frame_type(self):
         return self.frame_type() is not None
 
-    def as_xml(self):
-        props = self.annotation.properties
-        return ('<Timeframe id="%s:%s" start="%s" end="%s" frameType="%s" />'
-                % (self.view.id, props['id'],
-                   props['start'], props['end'], props['frameType']))
+    def node_summary(self, full=False):
+        if self.summary is None:
+            props = self.properties
+            self.summary = { 'start': props['start'],
+                             'end': props['end'],
+                             'frameType': props['frameType'] }
+            if full:
+                self.summary['id'] = "%s:%s" % (self.view.id, props['id'])
+        return self.summary
 
 
 class EntityNode(Node):
@@ -246,12 +254,12 @@ class EntityNode(Node):
         return "<%s %s %s:%s %s>" \
             % (self.at_type.shortname,
                self.identifier,
-               self.annotation.properties['start'],
-               self.annotation.properties['end'],
-               self.annotation.properties['text'])
+               self.properties['start'],
+               self.properties['end'],
+               self.properties['text'])
 
     def start_in_video(self):
-        return self.anchor()['start']
+        return self.anchor()['video-start']
 
     def pp(self):
         print(self)
@@ -259,10 +267,27 @@ class EntityNode(Node):
         for i, p in enumerate(self.paths_to_docs()):
             print('  %s' % ' '.join([str(n) for n in p[1:]]))
 
+    def node_summary(self, full=False):
+        if self.summary is None:
+            props = self.properties
+            anchor = self.anchor()
+            if 'coordinates' in anchor:
+                anchor['coordinates'] = \
+                    ','.join(["%s:%s" % (pair[0], pair[1])
+                              for pair in anchor['coordinates']])
+            self.summary = {
+                'group': props['group'],
+                'cat': props['category'],
+                'tag': props.get('tag', 'nil'),
+                'document': self._get_document_plus_span() }
+            if full:
+                self.summary['id'] = "%s:%s" % (self.view.id, props['id'])
+            for prop in ('video-start', 'video-end', 'coordinates'):
+                if prop in anchor:
+                    self.summary[prop] = anchor[prop] 
+        return self.summary
+        
     def as_xml(self, verbose=False):
-        # TODO: use self.properties instead of self.annotation.properties since
-        # the former may have been updated
-        props = self.annotation.properties
         props = self.properties
         anchor = self.anchor()
         anchor_str = ''
@@ -273,30 +298,27 @@ class EntityNode(Node):
                              for pair in anchor['coordinates']]))
         elif 'end' in anchor:
              anchor_str = 'video-start="%s" video-end="%s"' \
-                % (anchor['start'], anchor['end'])
-        try:
-            tag = props['tag']
-        except KeyError:
-            tag = 'nil'
+                 % (anchor['start'], anchor['end'])
+        tag = props.get('tag', 'nil')
         if verbose:
-            return ('<Entity id="%s:%s" doc="%s:%s"%s" cat="%s" %s />'
-                    % (self.view.id, props['id'], self.document.identifier,
-                       props['start'], props['end'], props['category'],
-                       anchor_str))
+            return ('<Entity group="%s" id="%s:%s" doc="%s:%s"%s" cat="%s" %s />'
+                    % (props['group'], self.view.id, props['id'],
+                       self.document.identifier, props['start'], props['end'],
+                       props['category'], anchor_str))
         else:
-            return ('<Entity id="%s:%s" cat="%s" tag="%s" %s />'
-                    % (self.view.id, props['id'], props['category'], tag, anchor_str))
+            return ('<Instance group="%s" cat="%s" tag="%s" %s />'
+                    % (props['group'], props['category'], tag, anchor_str))
 
     def anchor(self):
         # TODO: deal with when the primary document is not a video
         self.paths = self.paths_to_docs()
         bbtf = self.find_boundingbox_or_timeframe()
         if bbtf.at_type.shortname == names.BOUNDING_BOX:
-            return {'start': bbtf.properties['timePoint'],
+            return {'video-start': bbtf.properties['timePoint'],
                     'coordinates': bbtf.properties['coordinates']}
         elif bbtf.at_type.shortname == names.TIME_FRAME:
-            return {'start': bbtf.properties['start'],
-                    'end': bbtf.properties['end']}
+            return {'video-start': bbtf.properties['start'],
+                    'video-end': bbtf.properties['end']}
 
     def find_boundingbox_or_timeframe(self):
         return self.paths[-1][-2]
@@ -308,10 +330,10 @@ class TagNode(Node):
         return "<%s %s %s:%s %s '%s'>" \
             % (self.at_type.shortname,
                self.identifier,
-               self.annotation.properties['start'],
-               self.annotation.properties['end'],
-               self.annotation.properties['tagName'],
-               self.annotation.properties['text'])
+               self.properties['start'],
+               self.properties['end'],
+               self.properties['tagName'],
+               self.properties['text'])
 
 
 class NodeFactory(object):

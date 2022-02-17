@@ -43,6 +43,10 @@ TODO:
 - entities from spacy are aligned with full document, not tokens therein
 - put the entities in bins according to location
 - add tags to entities
+- use parameters
+- define summary() to create a summary and then separate the export into XML
+  versus JSON
+- need to add granularity and others as parameters
 
 """
 
@@ -80,15 +84,23 @@ CLAMS_PYTHON_VERSION = '0.4.4'
 # Bounding boxes have a time point, but what we are looking for below is to find
 # a start and an end in the video so we manufacture an end point. Set to 1000ms
 # because Tessearct samples every second
+# TODO: this is not used anymore, probably needs to be re-introduced
 MINIMAL_TIMEFRAME_LENGTH = 1000
 
 # When a named entity occurs 20 times we do not want to generate 20 instances of
 # pbcoreSubject. If the start of the next entity occurs within the below number
 # of miliseconds after the end of the previous, then it is just added to the
 # previous one. Taking one minute as the default so two mentions in a minute end
-# up being the same instance.
+# up being the same instance. This setting can be changed with the 'granularity'
+# paramater.
 GRANULARITY = 60000
-GRANULARITY = 800
+GRANULARITY_HELP = 'maximum interval between two entities in the same cluster'
+
+# The transcript is probably the largest part of the summary, but in some cases
+# it is not needed for the user, inwhich case we can suppress it from being in
+# the output This setting can be changed with the 'transcript' parameter.
+TRANSCRIPT = True
+TRANSCRIPT_HELP = ''
 
 
 class MmifSummarizer(ClamsConsumer):
@@ -110,29 +122,53 @@ class MmifSummarizer(ClamsConsumer):
         self.metadata.add_input(AnnotationTypes.BoundingBox)
         self.metadata.add_input(AnnotationTypes.Alignment)
         self.metadata.add_output(Uri.TOKEN)
+        self.metadata.add_parameter('granularity', GRANULARITY_HELP, 'integer')
+        self.metadata.add_parameter('transcript', TRANSCRIPT_HELP, 'boolean')
         return self.metadata
 
-    def _consume(self, mmif):
+    def _consume(self, mmif, **kwargs):
+        #print('>>>', kwargs)
         self.mmif = mmif if type(mmif) is Mmif else Mmif(mmif)
-        self.summarizer = Summarizer(mmif)
-        self.summarizer.pp_summary()
-        return self.summarizer.summary()
+        self.summarizer = Summarizer(mmif, **kwargs)
+        print(self.summarizer.as_xml())
+        return self.summarizer.summary
 
 
 class Summarizer(object):
 
-    def __init__(self, mmif: Mmif):
+    def __init__(self, mmif: Mmif, **kwargs: dict):
+        global GRANULARITY, TRANSCRIPT
+        GRANULARITY = kwargs.get('granularity', GRANULARITY)
+        TRANSCRIPT = kwargs.get('transcript', TRANSCRIPT)
         self.mmif = mmif if type(mmif) is Mmif else Mmif(mmif)
         self.graph = Graph(mmif)
-        #self.items = {'timeframes': [], 'entities': [], 'tags': []}
-        self.items = {'entities': []}
-        self.graph.pp('pp-graph.txt')
+        #self.graph.pp('pp-graph.txt')
+        #self.graph.token_idx.pp('pp-tokens.txt')
+        #self._show_paths()
+        self.summarize()
+
+    def summarize(self):
         self.timeframes = SummarizedTimeFrames(self.graph)
         self.tags = SummarizedTags(self.graph)
         self.entities = SummarizedEntities(self.graph)
         self.entities.group()
         self.entities.add_tags(self.tags)
-        #self._show_paths()
+        self.summary = {
+            'Documents': [],
+            'Transcript': None,
+            'TimeFrames': [],
+            'Entities': {} }
+        for document in self.graph.documents:
+            self.summary['Documents'].append(
+                { 'type': document.at_type.shortname,
+                  'location': document.location })
+        for tf in self.timeframes:
+            self.summary['TimeFrames'].append(tf.node_summary())
+        for text in self.entities.nodes_idx:
+            self.summary['Entities'][text] = []
+            for ent in self.entities.nodes_idx[text]:
+                self.summary['Entities'][text].append(ent.node_summary())
+        self.print_summary()
 
     def _show_paths(self):
         # some experimentation with paths from tokens
@@ -140,29 +176,42 @@ class Summarizer(object):
             paths = node.paths_to_docs()
             print_paths(paths)
 
-    def summary(self):
-        return json.dumps(self.items, indent=4)
+    def print_summary(self):
+        print(json.dumps(self.summary, indent=4))
 
-    def pp_summary(self):
-        print('\n<Summary>')
-        print('  <Documents>')
-        for document in self.graph.documents:
-            print('    <Document type="%s" location="%s"/>'
-                  % (document.at_type.shortname, document.location))
-        print('  </Documents>')
-        print('  <TimeFrames>')
-        for tf in self.timeframes:
-            print('   ', tf.as_xml())
-        print('  </TimeFrames>')
-        print('  <Entities>')
-        for text in self.entities.nodes_idx:
-            print('    <EntityGroup text="%s">' % text)
-            for e in self.entities.nodes_idx[text]:
-                print('     ', e.as_xml())
-            print('    </EntityGroup>')
-        print('  </Entities>')
-        print('</Summary>')
-        print()
+    def as_xml(self):
+        # TODO: use either bs or make otherwise certain that data are valid xml
+        buffer = io.StringIO()
+        buffer.write('<Summary>\n')
+        buffer.write('  <Documents>\n')
+        for doc in self.summary['Documents']:
+            buffer.write('    <Document type="%s" location="%s"/>\n'
+                         % (doc['type'], doc['location']))
+        buffer.write('  </Documents>\n')
+        buffer.write('  <TimeFrames>\n')
+        props = ('id', 'start', 'end', 'frameType')
+        for tf in self.summary['TimeFrames']:
+            buffer.write('    <TimeFrame')
+            self._write_props(buffer, tf, props)
+            buffer.write('/>\n')
+        buffer.write('  </Documents>\n')
+        buffer.write('  <Entities>\n')
+        props = ('id', 'group', 'cat', 'tag', 'video-start', 'video-end', 'coordinates')
+        for text in self.summary['Entities']:
+            buffer.write('    <Entity text="%s">\n' % text)
+            for e in self.summary['Entities'][text]:
+                buffer.write('      <Instance')
+                self._write_props(buffer, e, props)
+                buffer.write('/>\n')
+            buffer.write('    </Entity>\n')
+        buffer.write('  </Entities>\n')
+        buffer.write('</Summary>\n')
+        return buffer.getvalue()
+        
+    def _write_props(self, buffer, summary, props):
+        for prop in props:
+            if prop in summary:
+                buffer.write(' %s="%s"' % (prop, summary[prop]))
 
 
 class SummarizedNodes(object):
@@ -219,13 +268,15 @@ class SummarizedEntities(SummarizedNodes):
         for e in self:
             self.nodes_idx.setdefault(e.properties['text'], []).append(e)
         for text, entities in self.nodes_idx.items():
-            self.nodes_idx[text] = sorted(entities, key=(lambda e: e.anchor()['start']))
+            self.nodes_idx[text] = sorted(entities,
+                                          key=(lambda e: e.start_in_video()))
         # then create the bins, governed by the GRANULARITY setting
         self.bins = Bins()
         for text, entities in self.nodes_idx.items():
             self.bins.add_entity(text, entities[0])
             for entity in entities[1:]:
-                self.bins.add(entity)
+                self.bins.add_instance(entity)
+        self.bins.mark_entities()
         #self.bins.print_bins()
 
     def add_tags(self, tags):
@@ -233,7 +284,7 @@ class SummarizedEntities(SummarizedNodes):
             tag_doc = tag.properties['document']
             tag_p1 = tag.properties['start']
             tag_p2 = tag.properties['end']
-            print('>>>', tag, tag_doc, tag_p1, tag_p2)
+            #print('>>>', tag, tag_doc, tag_p1, tag_p2)
             entities = self.nodes_idx.get(tag.properties['text'], [])
             for entity in entities:
                 props = list(entity.properties.keys())
@@ -241,12 +292,11 @@ class SummarizedEntities(SummarizedNodes):
                 doc = props['document']
                 p1 = props['start']
                 p2 = props['end']
-                print('       ', entity, doc, p1, p2)
-                # TODO: this seems to work but somehow it does not get printed in the summary
+                #print('       ', entity, doc, p1, p2)
                 if tag_doc == doc and tag_p1 == p1 and tag_p2 == p2:
-                    print('        ==> matches!')
+                    #print('        ==> matches!')
                     entity.properties['tag'] = tag.properties['tagName']
-                    print('           ', entity.properties)
+                    #print('           ', entity.properties)
 
     def print_groups(self):
         for key in sorted(self.nodes_idx):
@@ -256,48 +306,6 @@ class SummarizedEntities(SummarizedNodes):
                 #print('   ', e.paths_to_docs())
                 #print_paths(e.paths_to_docs(), indent='    ')
 
-    def XXX_group_instances(self, text, entities):
-        """Groups all instances of the entity."""
-        entities.sort(key=itemgetter(1))
-        # print("%-15s" % text, [(e[1],e[2]) for e in entities])
-        grouped_entities = [entities.pop(0)]
-        for entity, start, end in entities:
-            if grouped_entities[-1][2] + GRANULARITY >= start:
-                grouped_entities[-1][2] = max(grouped_entities[-1][2], end)
-            else:
-                grouped_entities.append([entity, start, end])
-        # print("%-15s" % text, [(e[1],e[2]) for e in grouped_entities])
-        return grouped_entities
-
-    def XXX_group_entities(self):
-        # MOVED HERE FROM THE SUMMARIZER
-        if not self.entities:
-            return
-        grouped = [self.entities[0]]
-        # TODO: group on text string
-        for entity in self.entities[1:]:
-            text = entity.properties['text']
-            start = entity.properties['start']
-            end = entity.properties['end']
-            last_text = grouped[-1].properties['text']
-            last_start = grouped[-1].properties['start']
-            last_end = grouped[-1].properties['end']
-            if last_start + GRANULARITY >= start:
-                # okay, this cannot be done because the bloody mmif object is immutable
-                # grouped[-1].annotation.properties['end'] = max(last_end, end)
-                # HA, use properties on the node instead
-                grouped[-1].properties['end'] = max(last_end, end)
-                g = 'GROUPING'
-            else:
-                grouped.append(entity)
-                g = 'ADDING'
-            #rint('- %-40s %2d %2d %2d %2d %s' % (entity, start, end, last_start, last_end, g))
-        for x in grouped:
-            continue
-            print('>>>', x)
-            print('   ', x.properties)
-        # self.entities = grouped
-
 
 class Bins(object):
 
@@ -305,25 +313,34 @@ class Bins(object):
         self.bins = {}
 
     def add_entity(self, text, entity):
+        #print('>>> add_entity', text, entity)
         self.current_text = text
         self.current_bin = Bin(entity)
         self.bins[text] = [self.current_bin]
-            
-    def add(self, entity):
+
+    def add_instance(self, entity):
         p1 = self.current_bin[-1].start_in_video()
         p2 = entity.start_in_video()
+        #print('--- add_instance', entity, p1, p2)
         if p2 - p1 < GRANULARITY:
             self.current_bin.add(entity)
         else:
-            current_bin = Bin(entity)
+            self.current_bin = Bin(entity)
             self.bins[self.current_text].append(self.current_bin)
+
+    def mark_entities(self):
+        """Marks all entities with the bin that they occur in."""
+        for entity_bins in self.bins.values():
+            for i, ebin in enumerate(entity_bins):
+                for entity in ebin:
+                    entity.properties['group'] = i
 
     def print_bins(self):
         for text in self.bins:
             print(text)
             bins = self.bins[text]
-            for i, bin in enumerate(bins):
-                bin.print_nodes(i)
+            for i, ebin in enumerate(bins):
+                ebin.print_nodes(i)
             print()
 
 
@@ -351,7 +368,9 @@ def start_service():
 
 def test_on_sample(fname):
     summarizer = MmifSummarizer()
-    result = summarizer.consume(open(fname).read())
+    result = summarizer.consume(open(fname).read(),
+                                granularity=800,
+                                transcript=True)
     #print(result)
 
 

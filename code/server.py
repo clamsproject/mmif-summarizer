@@ -34,8 +34,8 @@ class ClamsConsumer(ABC):
     def consumermetadata(self):
         return self.metadata.json(indent=2)
 
-    def consume(self, mmif) -> str:
-        return self._consume(mmif)
+    def consume(self, mmif, **kwargs) -> str:
+        return self._consume(mmif, **kwargs)
 
     @abstractmethod
     def _consumermetadata(self) -> dict:

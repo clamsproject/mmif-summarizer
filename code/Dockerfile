@@ -4,7 +4,7 @@ WORKDIR ./app
 
 RUN pip3 install beautifulsoup4===4.9.3
 RUN pip3 install lapps==0.0.2
-RUN pip3 install clams-python==0.4.4
+RUN pip3 install clams-python==0.5.0
 
 COPY ./ ./
 
