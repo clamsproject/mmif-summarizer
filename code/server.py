@@ -4,15 +4,9 @@ The classes in this module are all adapted from the clams-python serve and
 restify modules, but the following changes were made:
 
 - Parameterized the mimetype (since it is probably not standardized).
-
-- Used only GET and POST (future clams-python change).
-
 - POST maps to consume() instead of annotate().
-
 - Renamed appmetadata() into consumermetadata() (since this is not an app).
-
 - Replaced App in classnames with Consumer.
-
 - Made some changes to follow the new app signatures of using appmetadata()
   versus _appmetadata() and annotate() versus _annotate(), the latter two
   renamed for consumers.
@@ -38,10 +32,10 @@ class ClamsConsumer(ABC):
         super().__init__()
 
     def consumermetadata(self):
-        return json.dumps(self.metadata)
+        return self.metadata.json(indent=2)
 
-    def consume(self, mmif) -> str:
-        return self._consume(mmif)
+    def consume(self, mmif, **kwargs) -> str:
+        return self._consume(mmif, **kwargs)
 
     @abstractmethod
     def _consumermetadata(self) -> dict:
@@ -55,7 +49,8 @@ class ClamsConsumer(ABC):
 class Restifier(object):
 
     def __init__(self, app_instance,
-                 loopback=False, port=5000, debug=True, mimetype='application/json'):
+                 loopback=False, port=5000, debug=True,
+                 mimetype='application/json'):
         super().__init__()
         self.cla = app_instance
         self.import_name = app_instance.__class__.__name__
@@ -82,14 +77,30 @@ class ClamsConsumerRestfulApi(Resource):
         self.mimetype = mimetype
 
     @staticmethod
-    def response(response_str: str, status=200, mimetype='application/json'):
+    def response(response_str: str, status=200, mimetype='application/xml'):
         if not isinstance(response_str, str):
             response_str = str(response_str)
-        return Response(response=response_str, status=status, mimetype=mimetype)
+        return Response(response=response_str,
+                        status=status,
+                        mimetype=mimetype)
 
     def get(self):
         return self.response(self.cla.consumermetadata())
 
     def post(self):
-        return self.response(self.cla.consume(Mmif(request.get_data())),
+        params = cast(request.args)
+        return self.response(self.cla.consume(Mmif(request.get_data()), **params),
                              mimetype=self.mimetype)
+
+
+def cast(params):
+    """A temporary stub to deal with parameters for this consumer. This is awaiting
+    the code that hooks up this consumer to the parameter casting code."""
+    true_values = ('True', 'true', '1', 'yes')
+    casted = {}
+    if 'granularity' in params:
+        casted['granularity'] = int(params['granularity'])
+    if 'transcript' in params:
+        val = params['transcript']
+        casted['transcript'] = True if val in true_values else False
+    return casted
