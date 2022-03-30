@@ -77,7 +77,7 @@ class ClamsConsumerRestfulApi(Resource):
         self.mimetype = mimetype
 
     @staticmethod
-    def response(response_str: str, status=200, mimetype='application/json'):
+    def response(response_str: str, status=200, mimetype='application/xml'):
         if not isinstance(response_str, str):
             response_str = str(response_str)
         return Response(response=response_str,
@@ -88,5 +88,19 @@ class ClamsConsumerRestfulApi(Resource):
         return self.response(self.cla.consumermetadata())
 
     def post(self):
-        return self.response(self.cla.consume(Mmif(request.get_data())),
+        params = cast(request.args)
+        return self.response(self.cla.consume(Mmif(request.get_data()), **params),
                              mimetype=self.mimetype)
+
+
+def cast(params):
+    """A temporary stub to deal with parameters for this consumer. This is awaiting
+    the code that hooks up this consumer to the parameter casting code."""
+    true_values = ('True', 'true', '1', 'yes')
+    casted = {}
+    if 'granularity' in params:
+        casted['granularity'] = int(params['granularity'])
+    if 'transcript' in params:
+        val = params['transcript']
+        casted['transcript'] = True if val in true_values else False
+    return casted

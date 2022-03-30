@@ -40,26 +40,20 @@ $ curl -H "Accept: application/json" -X POST -d@input-v9.mmif http://0.0.0.0:500
 See README.md for more details.
 
 TODO:
+- DONE need to add granularity and others as parameters
 - entities from spacy are aligned with full document, not tokens therein
-- put the entities in bins according to location
-- add tags to entities
-- use parameters
 - define summary() to create a summary and then separate the export into XML
   versus JSON
-- need to add granularity and others as parameters
+- run this on a real file with Kaldi and other real annotations:
+    Bars-and-tone --> Slate Recognition --> Slate parser mockup -->
+    Segmenter --> Kaldi --> EAST --> Tesseract --> SpacyNER
 
 """
 
-import os
 import sys
 import json
-import re
 import io
-import collections
-from string import Template
-from operator import itemgetter
-
-from bs4 import BeautifulSoup as bs, Tag
+from xml.sax.saxutils import escape, quoteattr
 
 from server import ClamsConsumer, Restifier
 from clams.appmetadata import AppMetadata
@@ -75,10 +69,10 @@ from graph import Graph
 import names
 
 
-VERSION = '0.0.5'
+VERSION = '0.1.0'
 MMIF_VERSION = '0.4.0'
 MMIF_PYTHON_VERSION = '0.4.5'
-CLAMS_PYTHON_VERSION = '0.4.4'
+CLAMS_PYTHON_VERSION = '0.5.0'
 
 
 # Bounding boxes have a time point, but what we are looking for below is to find
@@ -92,15 +86,20 @@ MINIMAL_TIMEFRAME_LENGTH = 1000
 # of miliseconds after the end of the previous, then it is just added to the
 # previous one. Taking one minute as the default so two mentions in a minute end
 # up being the same instance. This setting can be changed with the 'granularity'
-# paramater.
+# parameter.
 GRANULARITY = 60000
 GRANULARITY_HELP = 'maximum interval between two entities in the same cluster'
 
 # The transcript is probably the largest part of the summary, but in some cases
-# it is not needed for the user, inwhich case we can suppress it from being in
+# it is not needed for the user, in which case we can suppress it from being in
 # the output This setting can be changed with the 'transcript' parameter.
 TRANSCRIPT = True
 TRANSCRIPT_HELP = ''
+
+# Properties used for the summary for various tags
+DOC_PROPS = ('type', 'location')
+TF_PROPS = ('id', 'start', 'end', 'frameType')
+E_PROPS = ('id', 'group', 'cat', 'tag', 'video-start', 'video-end', 'coordinates')
 
 
 class MmifSummarizer(ClamsConsumer):
@@ -108,7 +107,7 @@ class MmifSummarizer(ClamsConsumer):
     def _consumermetadata(self):
         self.metadata = \
             AppMetadata(
-                identifier="https://apps.clams.ai/pbcore-converter",
+                identifier="https://apps.clams.ai/mmif-summarizer",
                 url='https://github.com/clamsproject/mmif-summarizer',
                 name="MMIF Summarizer",
                 description="Summarize a MMIF file.",
@@ -117,11 +116,12 @@ class MmifSummarizer(ClamsConsumer):
                 app_license='Apache 2.0',
                 analyzer_version=VERSION,
                 analyzer_license='Apache 2.0')
-        self.metadata.add_input(DocumentTypes.TextDocument)
-        self.metadata.add_input(AnnotationTypes.TimeFrame)
-        self.metadata.add_input(AnnotationTypes.BoundingBox)
-        self.metadata.add_input(AnnotationTypes.Alignment)
-        self.metadata.add_output(Uri.TOKEN)
+        self.metadata.add_input(DocumentTypes.TextDocument, required=False)
+        self.metadata.add_input(AnnotationTypes.TimeFrame, required=False)
+        self.metadata.add_input(AnnotationTypes.BoundingBox, required=False)
+        self.metadata.add_input(AnnotationTypes.Alignment, required=False)
+        self.metadata.add_input(Uri.TOKEN, required=False)
+        self.metadata.add_input(Uri.NE, required=False)
         self.metadata.add_parameter('granularity', GRANULARITY_HELP, 'integer')
         self.metadata.add_parameter('transcript', TRANSCRIPT_HELP, 'boolean')
         return self.metadata
@@ -130,8 +130,7 @@ class MmifSummarizer(ClamsConsumer):
         #print('>>>', kwargs)
         self.mmif = mmif if type(mmif) is Mmif else Mmif(mmif)
         self.summarizer = Summarizer(mmif, **kwargs)
-        print(self.summarizer.as_xml())
-        return self.summarizer.summary
+        return self.summarizer.as_xml()
 
 
 class Summarizer(object):
@@ -153,9 +152,10 @@ class Summarizer(object):
         self.entities = SummarizedEntities(self.graph)
         self.entities.group()
         self.entities.add_tags(self.tags)
+        self.transcript = self.get_transcript()
         self.summary = {
             'Documents': [],
-            'Transcript': None,
+            'Transcript': self.transcript,
             'TimeFrames': [],
             'Entities': {} }
         for document in self.graph.documents:
@@ -168,7 +168,6 @@ class Summarizer(object):
             self.summary['Entities'][text] = []
             for ent in self.entities.nodes_idx[text]:
                 self.summary['Entities'][text].append(ent.node_summary())
-        self.print_summary()
 
     def _show_paths(self):
         # some experimentation with paths from tokens
@@ -176,42 +175,51 @@ class Summarizer(object):
             paths = node.paths_to_docs()
             print_paths(paths)
 
+    def get_transcript(self):
+        """Returns the document text from the most recent kaldi view."""
+        kaldi_view = None
+        for view in self.mmif.views:
+            # TODO: a bit fragile perhaps
+            if 'kaldi' in view.metadata.app:
+                kaldi_view = view
+        transcript = None
+        for anno in kaldi_view.annotations:
+            if anno.at_type.shortname == names.TEXT_DOCUMENT:
+                return anno.properties['text'].value
+ 
     def print_summary(self):
         print(json.dumps(self.summary, indent=4))
 
     def as_xml(self):
-        # TODO: use either bs or make otherwise certain that data are valid xml
-        buffer = io.StringIO()
-        buffer.write('<Summary>\n')
-        buffer.write('  <Documents>\n')
+        s = io.StringIO()
+        s.write('<Summary>\n')
+        s.write('  <Documents>\n')
         for doc in self.summary['Documents']:
-            buffer.write('    <Document type="%s" location="%s"/>\n'
-                         % (doc['type'], doc['location']))
-        buffer.write('  </Documents>\n')
-        buffer.write('  <TimeFrames>\n')
-        props = ('id', 'start', 'end', 'frameType')
+            self.write_tag(s, 'Document', '    ', doc, DOC_PROPS)
+        s.write('  </Documents>\n')
+        if TRANSCRIPT:
+            s.write('  <Transcript text=%s/>\n' % quoteattr(self.transcript))
+        s.write('  <TimeFrames>\n')
         for tf in self.summary['TimeFrames']:
-            buffer.write('    <TimeFrame')
-            self._write_props(buffer, tf, props)
-            buffer.write('/>\n')
-        buffer.write('  </Documents>\n')
-        buffer.write('  <Entities>\n')
-        props = ('id', 'group', 'cat', 'tag', 'video-start', 'video-end', 'coordinates')
+            self.write_tag(s,'TimeFrame', '    ', tf, TF_PROPS)
+        s.write('  </Documents>\n')
+        s.write('  <Entities>\n')
         for text in self.summary['Entities']:
-            buffer.write('    <Entity text="%s">\n' % text)
+            s.write('    <Entity text=%s>\n' % quoteattr(text))
             for e in self.summary['Entities'][text]:
-                buffer.write('      <Instance')
-                self._write_props(buffer, e, props)
-                buffer.write('/>\n')
-            buffer.write('    </Entity>\n')
-        buffer.write('  </Entities>\n')
-        buffer.write('</Summary>\n')
-        return buffer.getvalue()
-        
-    def _write_props(self, buffer, summary, props):
+                self.write_tag(s,'Instance', '      ', e, E_PROPS)
+            s.write('    </Entity>\n')
+        s.write('  </Entities>\n')
+        s.write('</Summary>\n')
+        return s.getvalue()
+
+    def write_tag(self, s, tagname, indent, obj, props):
+        pairs = []
         for prop in props:
-            if prop in summary:
-                buffer.write(' %s="%s"' % (prop, summary[prop]))
+            if prop in obj:
+                pairs.append("%s=%s" % (prop, quoteattr(str(obj[prop]))))
+        s.write('%s<%s %s/>\n'
+                % (indent, tagname, ' '.join(pairs)))
 
 
 class SummarizedNodes(object):
@@ -370,8 +378,9 @@ def test_on_sample(fname):
     summarizer = MmifSummarizer()
     result = summarizer.consume(open(fname).read(),
                                 granularity=800,
-                                transcript=True)
-    #print(result)
+                                transcript=True,
+                                transcript_mode='sentence')
+    print(result)
 
 
 if __name__ == "__main__":
