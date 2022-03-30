@@ -202,7 +202,7 @@ class Summarizer(object):
         s.write('  <TimeFrames>\n')
         for tf in self.summary['TimeFrames']:
             self.write_tag(s,'TimeFrame', '    ', tf, TF_PROPS)
-        s.write('  </Documents>\n')
+        s.write('  </TimeFrames>\n')
         s.write('  <Entities>\n')
         for text in self.summary['Entities']:
             s.write('    <Entity text=%s>\n' % quoteattr(text))
