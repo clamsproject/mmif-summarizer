@@ -51,7 +51,7 @@ class Graph(object):
             # alignments are not added as nodes, but we do keep them around
             self.alignments.append((view, annotation))
         else:
-            node = NodeFactory.new_node(self, view, annotation)
+            node = Nodes.new(self, view, annotation)
             self.nodes[node.identifier] = node
 
     def add_edge(self, view, alignment):
@@ -140,8 +140,6 @@ class Node(object):
         target = self._get_document()
         self.targets = [] if target is None else [target]
         self.document = target
-        # Will be filled in the first time the summary() method is used
-        self.summary = None
 
     def __str__(self):
         anchor = ''
@@ -152,13 +150,13 @@ class Node(object):
         return "<%s %s%s>" % (self.at_type.shortname, self.identifier, anchor)
 
     def _get_view_id(self):
-        """Return the view identifier of the annoation, this will be None when
+        """Return the view identifier of the annotation, this will be None when
         the Node was created from an element of the MMIF document list."""
         return None if self.view is None else self.view.id
 
     def _create_identifier(self):
         """Create a composite identifier view_id:annotation_id. If the Node was
-        created for an element of the document list just retun the document
+        created for an element of the document list just return the document
         identifier."""
         # TODO: what if the annotation_id already had the view_id prepended?
         view_id = self._get_view_id()
@@ -216,16 +214,20 @@ class Node(object):
             paths[i].extend(target._paths_to_docs())
         return paths
 
+    def summary(self):
+        """The default summary is just the identfier, this should typically be
+        overriden by sub classes."""
+        return { 'id': self.identifier }
+
 
 class TimeFrameNode(Node):
 
     def __str__(self):
-        return '<Timeframe %s:%s %s:%s %s>' % (
-            self.view.id,
-            self.properties['id'],
-            self.properties['start'],
-            self.properties['end'],
-            self.frame_type())
+        return ('<TimeFrameNode %s %s:%s %s>'
+                % (self.identifier,
+                   self.properties['start'],
+                   self.properties['end'],
+                   self.frame_type()))
 
     def frame_type(self):
         return self.properties.get('frameType')
@@ -233,15 +235,13 @@ class TimeFrameNode(Node):
     def has_frame_type(self):
         return self.frame_type() is not None
 
-    def node_summary(self, full=False):
-        if self.summary is None:
-            props = self.properties
-            self.summary = { 'start': props['start'],
-                             'end': props['end'],
-                             'frameType': props['frameType'] }
-            if full:
-                self.summary['id'] = "%s:%s" % (self.view.id, props['id'])
-        return self.summary
+    def summary(self):
+        """The summary of a time frame just contains the identifier, start, end
+        and frame type."""
+        return { 'id': self.identifier,
+                 'start': self.properties['start'],
+                 'end': self.properties['end'],
+                 'frameType': self.properties.get('frameType') }
 
 
 class EntityNode(Node):
@@ -249,17 +249,21 @@ class EntityNode(Node):
     def __init__(self, graph, view, annotation):
         super().__init__(graph, view, annotation)
         self.tokens = []
+        self._paths = None
+        self._anchor = None
 
     def __str__(self):
-        return "<%s %s %s:%s %s>" \
-            % (self.at_type.shortname,
-               self.identifier,
-               self.properties['start'],
-               self.properties['end'],
-               self.properties['text'])
+        return ("<NamedEntityNode %s %s:%s %s>"
+                % (self.identifier,
+                   self.properties['start'],
+                   self.properties['end'],
+                   self.properties['text']))
 
     def start_in_video(self):
         return self.anchor()['video-start']
+
+    def end_in_video(self):
+        return self.anchor().get('video-end')
 
     def pp(self):
         print(self)
@@ -267,52 +271,34 @@ class EntityNode(Node):
         for i, p in enumerate(self.paths_to_docs()):
             print('  %s' % ' '.join([str(n) for n in p[1:]]))
 
-    def node_summary(self, full=False):
-        if self.summary is None:
-            props = self.properties
-            anchor = self.anchor()
-            if 'coordinates' in anchor:
-                anchor['coordinates'] = \
-                    ','.join(["%s:%s" % (pair[0], pair[1])
-                              for pair in anchor['coordinates']])
-            self.summary = {
-                'group': props['group'],
-                'cat': props['category'],
-                'tag': props.get('tag', 'nil'),
-                'document': self._get_document_plus_span() }
-            if full:
-                self.summary['id'] = "%s:%s" % (self.view.id, props['id'])
-            for prop in ('video-start', 'video-end', 'coordinates'):
-                if prop in anchor:
-                    self.summary[prop] = anchor[prop] 
-        return self.summary
-        
-    def as_xml(self, verbose=False):
-        props = self.properties
+    def summary(self):
+        """The summary for entities needs to include where in the video or image
+        the entity occurs, it is not enough to just give the text document."""
         anchor = self.anchor()
-        anchor_str = ''
-        if 'coordinates' in anchor:
-            anchor_str = 'video-start="%s" coor="%s"' \
-                % (anchor['start'],
-                   ','.join(["%s:%s" % (pair[0], pair[1])
-                             for pair in anchor['coordinates']]))
-        elif 'end' in anchor:
-             anchor_str = 'video-start="%s" video-end="%s"' \
-                 % (anchor['start'], anchor['end'])
-        tag = props.get('tag', 'nil')
-        if verbose:
-            return ('<Entity group="%s" id="%s:%s" doc="%s:%s"%s" cat="%s" %s />'
-                    % (props['group'], self.view.id, props['id'],
-                       self.document.identifier, props['start'], props['end'],
-                       props['category'], anchor_str))
-        else:
-            return ('<Instance group="%s" cat="%s" tag="%s" %s />'
-                    % (props['group'], props['category'], tag, anchor_str))
+        return {
+            'id': self.identifier,
+            'group': self.properties['group'],
+            'cat': self.properties['category'],
+            'tag': self.properties.get('tag'),
+            'document': self._get_document_plus_span(),
+            'video-start': anchor.get('video-start'),
+            'video-end': anchor.get('video-end'),
+            'coordinates': self._coordinates_as_string(anchor)}
 
     def anchor(self):
-        # TODO: deal with when the primary document is not a video
+        """The anchor is the position in the video that the entity is linked to.
+        This anchor cannot be found in the document property because that points
+        to a text document that was somehow derived from the video document. Some
+        graph traversal is needed to get the anchor, but we know that the anchor
+        is always a time frame or a bounding box.
+        """
+        # TODO: deal with the case where the primary document is not a video
         self.paths = self.paths_to_docs()
         bbtf = self.find_boundingbox_or_timeframe()
+        #for path in paths:
+        #    print('... [')
+        #    for n in path: print('     ', n)
+        #print('===', bbtf)
         if bbtf.at_type.shortname == names.BOUNDING_BOX:
             return {'video-start': bbtf.properties['timePoint'],
                     'coordinates': bbtf.properties['coordinates']}
@@ -320,8 +306,41 @@ class EntityNode(Node):
             return {'video-start': bbtf.properties['start'],
                     'video-end': bbtf.properties['end']}
 
+    def anchor2(self):
+        """The anchor is the position in the video that the entity is linked to.
+        This anchor cannot be found in the document property because that points
+        to a text document that was somehow derived from the video document. Some
+        graph traversal is needed to get the anchor, but we know that the anchor
+        is always a time frame or a bounding box.
+        """
+        # TODO: with this version you get an error that the paths variable does
+        #       not exist yet, must get a clearer picture on how to build a graph
+        #       where nodes have paths to anchors
+        # TODO: deal with the case where the primary document is not a video
+        if self._anchor is None:
+            self._paths = self.paths_to_docs()
+            bbtf = self.find_boundingbox_or_timeframe()
+            #for path in self._paths:
+            #    print('... [')
+            #    for n in path: print('     ', n)
+            #print('===', bbtf)
+            if bbtf.at_type.shortname == names.BOUNDING_BOX:
+                self._anchor = {'video-start': bbtf.properties['timePoint'],
+                               'coordinates': bbtf.properties['coordinates']}
+            elif bbtf.at_type.shortname == names.TIME_FRAME:
+                self._anchor = {'video-start': bbtf.properties['start'],
+                               'video-end': bbtf.properties['end']}
+        return self._anchor
+
     def find_boundingbox_or_timeframe(self):
         return self.paths[-1][-2]
+
+    @staticmethod
+    def _coordinates_as_string(anchor):
+        if 'coordinates' not in anchor:
+            return None
+        return ','.join(["%s:%s" % (pair[0], pair[1])
+                         for pair in anchor['coordinates']])
 
 
 class TagNode(Node):
@@ -336,7 +355,7 @@ class TagNode(Node):
                self.properties['text'])
 
 
-class NodeFactory(object):
+class Nodes(object):
 
     """Factory class for Node creation. Use Node for creation unless a special
     class was registered for the kind of annotation we have."""
@@ -346,6 +365,6 @@ class NodeFactory(object):
                      names.TIME_FRAME: TimeFrameNode }
 
     @classmethod
-    def new_node(cls, graph, view, annotation):
+    def new(cls, graph, view, annotation):
         node_class = cls.node_classes.get(annotation.at_type.shortname, Node)
         return node_class(graph, view, annotation)

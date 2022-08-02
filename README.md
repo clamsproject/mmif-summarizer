@@ -23,6 +23,10 @@ The output for this should be something like
   <Documents>
     <Document type="VideoDocument" location="file:///var/archive/video-002.mp4"/>
   </Documents>
+  <Transcript>
+    <line>Hello, this is Jim Lehrer with the NewsHour on PBS.</line>
+    <line>We have exciting news about the tomato &amp; Florida.</line>
+  </Transcript>
   <TimeFrames>
     <TimeFrame start="0" end="2600" frameType="bars-and-tone"/>
     <TimeFrame start="2700" end="5300" frameType="slate"/>
@@ -46,7 +50,7 @@ To use the server (do this from a different terminal than the run.py script, but
 
 ```bash
 $ curl -X GET http://0.0.0.0:5000/
-$ curl -H "Accept: application/json" -X POST -d@examples/input-v7.mmif http://0.0.0.0:5000/
+$ curl --request POST -d@examples/input-v7.mmif http://0.0.0.0:5000/
 ```
 
 The first gets you the metadata, the second sends off the file `examples/input-v7.mmif` to get summarized.
@@ -75,6 +79,6 @@ To run the Flask server in a Docker container:
 
 ```bash
 $ docker run --rm -d -p 5000:5000 mmif-summarizer
-$ curl -H "Accept: application/json" -X POST -d@examples/input-v7.mmif http://0.0.0.0:5000/
+$ curl --request POST -d@examples/input-v7.mmif http://0.0.0.0:5000/
 ```
 

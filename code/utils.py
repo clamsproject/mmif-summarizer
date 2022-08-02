@@ -4,6 +4,9 @@ Module with utility methods.
 
 """
 
+import io
+from xml.sax.saxutils import quoteattr, escape
+
 
 def compose_id(view_id, anno_id):
     """Composes the view identifier with the annotation identifier."""
@@ -13,6 +16,38 @@ def compose_id(view_id, anno_id):
 def type_name(annotation):
     """Return the short name of the type."""
     return annotation.at_type.split('/')[-1]
+
+
+def as_xml(tag, objs, props):
+    """Return an XML string for a list of instances of tag."""
+    s = io.StringIO()
+    s.write('  <%ss>\n' % tag)
+    for obj in objs:
+        write_tag(s, tag, '    ', obj, props)
+    s.write('  </%ss>\n' % tag)
+    return s.getvalue()
+
+
+def write_tag(s, tagname: str, indent: str, obj: dict, props: tuple):
+    """Write an XML tag to stringbuffer s. Only properties from obj that are in
+    the props tuple are printed."""
+    pairs = []
+    for prop in props:
+        if prop in obj:
+            if obj[prop] is not None:
+                pairs.append("%s=%s" % (prop, xml_attribute(obj[prop])))
+    s.write('%s<%s %s/>\n'
+            % (indent, tagname, ' '.join(pairs)))
+
+
+def xml_attribute(attr):
+    """Return attr as an XML attribute."""
+    return quoteattr(str(attr))
+
+
+def xml_data(text):
+    """Return text as XML data."""
+    return escape(str(text))
 
 
 def flatten_paths(paths):

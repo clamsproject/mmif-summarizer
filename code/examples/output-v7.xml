@@ -1,0 +1,27 @@
+<Summary>
+  <Documents>
+    <Document id="m1" type="VideoDocument" location="file:///var/archive/video-002.mp4"/>
+  </Documents>
+  <Views>
+    <View id="v_1" timestamp="2020-05-27T12:23:45" app="http://apps.clams.ai/bars-and-tone/1.0.5"/>
+    <View id="v_2" timestamp="2020-05-27T12:23:45" app="http://apps.clams.ai/slates/1.0.3"/>
+    <View id="v_3" app="http://apps.clams.ai/audio-segmenter/0.2.1"/>
+    <View id="v_4" app="http://apps.clams.ai/kaldi/0.2.1"/>
+    <View id="v_5" app="http://apps.clams.ai/east/0.2.1"/>
+    <View id="v_6" app="http://apps.clams.ai/tesseract/0.2.1"/>
+    <View id="v_7" timestamp="2020-05-27T12:23:45" app="http://apps.clams.ai/slate-parser/1.0.2"/>
+  </Views>
+  <Transcript>
+    <line>Hello, this is Jim Lehrer with the NewsHour on PBS.</line>
+    <line>We have exciting news about the tomato &amp; Florida.</line>
+  </Transcript>
+  <TimeFrames>
+    <TimeFrame id="v_1:s1" start="0" end="2600" frameType="bars-and-tone"/>
+    <TimeFrame id="v_2:s1" start="2700" end="5300" frameType="slate"/>
+    <TimeFrame id="v_3:tf1" start="0" end="5500" frameType="non-speech"/>
+    <TimeFrame id="v_3:tf2" start="5500" end="22000" frameType="speech"/>
+  </TimeFrames>
+  <Entities>
+  </Entities>
+</Summary>
+

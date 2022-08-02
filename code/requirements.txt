@@ -1,3 +1,2 @@
-lapps==0.0.2
-clams-python==0.5.0
+clams-python==0.5.1
 beautifulsoup4===4.9.3

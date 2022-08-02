@@ -444,7 +444,7 @@
         {
           "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
           "properties": {
-            "timePoint": 3000,
+            "timePoint": 3500,
             "boxType": "text",
             "coordinates": [
               [
@@ -470,7 +470,7 @@
         {
           "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
           "properties": {
-            "timePoint": 3000,
+            "timePoint": 3500,
             "boxType": "text",
             "coordinates": [
               [
@@ -496,7 +496,7 @@
         {
           "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
           "properties": {
-            "timePoint": 3000,
+            "timePoint": 3500,
             "boxType": "text",
             "coordinates": [
               [
@@ -522,7 +522,7 @@
         {
           "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
           "properties": {
-            "timePoint": 3000,
+            "timePoint": 3500,
             "boxType": "text",
             "coordinates": [
               [
@@ -548,7 +548,7 @@
         {
           "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
           "properties": {
-            "timePoint": 3000,
+            "timePoint": 3500,
             "boxType": "text",
             "coordinates": [
               [
@@ -574,7 +574,7 @@
         {
           "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
           "properties": {
-            "timePoint": 3000,
+            "timePoint": 3500,
             "boxType": "text",
             "coordinates": [
               [
@@ -600,7 +600,7 @@
         {
           "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
           "properties": {
-            "timePoint": 3000,
+            "timePoint": 3500,
             "boxType": "text",
             "coordinates": [
               [
@@ -626,7 +626,7 @@
         {
           "@type": "http://mmif.clams.ai/0.4.0/vocabulary/BoundingBox",
           "properties": {
-            "timePoint": 3000,
+            "timePoint": 3500,
             "boxType": "text",
             "coordinates": [
               [

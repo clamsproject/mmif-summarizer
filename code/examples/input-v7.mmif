@@ -112,7 +112,7 @@
           "properties": {
             "id": "td1",
             "text": {
-	      "@value": "Hello, this is Jim Lehrer with the NewsHour on PBS."	   
+	      "@value": "Hello, this is Jim Lehrer with the NewsHour on PBS. We have exciting news about the tomato & Florida."
             }
 	  }
         },

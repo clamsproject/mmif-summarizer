@@ -1,0 +1,53 @@
+<Summary>
+  <Documents>
+    <Document id="m1" type="VideoDocument" location="file:///var/archive/video-002.mp4"/>
+  </Documents>
+  <Views>
+    <View id="v_1" timestamp="2020-05-27T12:23:45" app="http://apps.clams.ai/bars-and-tone/1.0.5"/>
+    <View id="v_2" timestamp="2020-05-27T12:23:45" app="http://apps.clams.ai/slates/1.0.3"/>
+    <View id="v_3" app="http://apps.clams.ai/audio-segmenter/0.2.1"/>
+    <View id="v_4" app="http://apps.clams.ai/kaldi/0.2.1"/>
+    <View id="v_5" app="http://apps.clams.ai/east/0.2.1"/>
+    <View id="v_6" app="http://apps.clams.ai/tesseract/0.2.1"/>
+    <View id="v_7" timestamp="2020-05-27T12:23:45" app="http://apps.clams.ai/slate-parser/1.0.2"/>
+    <View id="v_8" timestamp="2021-07-23T13:36:21.845035" app="https://apps.clams.ai/spacy_nlp"/>
+    <View id="v_9" timestamp="2021-07-23T13:36:21.854547" app="https://apps.clams.ai/spacy_nlp"/>
+  </Views>
+  <Transcript>
+    <line>Hello, this is Jim Lehrer with the NewsHour on PBS.</line>
+  </Transcript>
+  <TimeFrames>
+    <TimeFrame id="v_1:s1" start="0" end="2600" frameType="bars-and-tone"/>
+    <TimeFrame id="v_2:s1" start="2700" end="5300" frameType="slate"/>
+    <TimeFrame id="v_3:tf1" start="0" end="5500" frameType="non-speech"/>
+    <TimeFrame id="v_3:tf2" start="5500" end="22000" frameType="speech"/>
+  </TimeFrames>
+  <Entities>
+    <Entity text="Jim Lehrer">
+      <Instance id="v_9:ne12" group="0" cat="PERSON" tag="Host" video-start="3500" coordinates="660:520,1200:520,660:580,1200:580"/>
+      <Instance id="v_9:ne18" group="0" cat="PERSON" tag="Host" video-start="4000" coordinates="660:520,1200:520,660:580,1200:580"/>
+      <Instance id="v_9:ne24" group="1" cat="PERSON" tag="Host" video-start="5000" coordinates="660:520,1200:520,660:580,1200:580"/>
+      <Instance id="v_8:ne2" group="1" cat="PERSON" video-start="5500" video-end="22000"/>
+    </Entity>
+    <Entity text="NewsHour">
+      <Instance id="v_8:ne4" group="0" cat="PRODUCT" video-start="5500" video-end="22000"/>
+    </Entity>
+    <Entity text="PBS">
+      <Instance id="v_8:ne6" group="0" cat="ORG" video-start="5500" video-end="22000"/>
+    </Entity>
+    <Entity text="1982-05-12">
+      <Instance id="v_9:ne8" group="0" cat="DATE" tag="Date" video-start="3500" coordinates="660:110,1250:110,660:170,1250:170"/>
+      <Instance id="v_9:ne14" group="0" cat="DATE" tag="Date" video-start="4000" coordinates="660:110,1250:110,660:170,1250:170"/>
+      <Instance id="v_9:ne20" group="1" cat="DATE" tag="Date" video-start="5000" coordinates="660:110,1250:110,660:170,1250:170"/>
+    </Entity>
+    <Entity text="HOST">
+      <Instance id="v_9:ne10" group="0" cat="ORG" video-start="3500" coordinates="180:520,460:520,180:580,460:580"/>
+      <Instance id="v_9:ne16" group="0" cat="ORG" video-start="4000" coordinates="180:520,460:520,180:580,460:580"/>
+      <Instance id="v_9:ne22" group="1" cat="ORG" video-start="5000" coordinates="180:520,460:520,180:580,460:580"/>
+    </Entity>
+    <Entity text="New York">
+      <Instance id="v_9:ne26" group="0" cat="GPE" video-start="21000" coordinates="150:810,1120:810,150:870,1120:870"/>
+    </Entity>
+  </Entities>
+</Summary>
+

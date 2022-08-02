@@ -1,8 +1,10 @@
 """run.py
 
-MMIF consumer that creates a PBCore XML file.
+MMIF consumer that creates a summary XML file.
 
 Makes some simplifying assumptions, some of them need to be revisited:
+
+- The transcript is taken from the last Kaldi view.
 
 - The input is the output of a pipeline where Kaldi and/or EAST/Tesseract run on
   a video file followed by spaCy NER.
@@ -23,10 +25,10 @@ Makes some simplifying assumptions, some of them need to be revisited:
 
 USAGE:
 
-To run just the converter on one of the simple sample input documents:
+To run just the summarizer on one of the simple sample input documents:
 
-$ python run.py -t input-v7.mmif
-$ python run.py -t input-v9.mmif
+$ python run.py -t examples/input-v7.mmif
+$ python run.py -t examples/input-v9.mmif
 
 The second one is like the first one but also includes spaCy annotations.
 
@@ -34,13 +36,12 @@ To start a Flask server and ping it:
 
 $ python run.py
 $ curl -X GET http://0.0.0.0:5000/
-$ curl -H "Accept: application/json" -X POST -d@input-v7.mmif http://0.0.0.0:5000/
-$ curl -H "Accept: application/json" -X POST -d@input-v9.mmif http://0.0.0.0:5000/
+$ curl -X POST -d@examples/input-v7.mmif http://0.0.0.0:5000/
+$ curl -X POST -d@examples/input-v9.mmif http://0.0.0.0:5000/
 
 See README.md for more details.
 
 TODO:
-- DONE need to add granularity and others as parameters
 - entities from spacy are aligned with full document, not tokens therein
 - define summary() to create a summary and then separate the export into XML
   versus JSON
@@ -53,7 +54,6 @@ TODO:
 import sys
 import json
 import io
-from xml.sax.saxutils import escape, quoteattr
 
 from server import ClamsConsumer, Restifier
 from clams.appmetadata import AppMetadata
@@ -62,32 +62,36 @@ from mmif.vocabulary import DocumentTypes
 from mmif.vocabulary import AnnotationTypes
 from lapps.discriminators import Uri
 
-from utils import type_name
+from utils import type_name, as_xml, write_tag, xml_attribute, xml_data
 from utils import flatten_paths, print_paths
 from utils import get_annotations_from_view, find_matching_tokens
 from graph import Graph
 import names
 
 
-VERSION = '0.1.0'
+VERSION = '0.1.1'
 MMIF_VERSION = '0.4.0'
-MMIF_PYTHON_VERSION = '0.4.5'
-CLAMS_PYTHON_VERSION = '0.5.0'
+MMIF_PYTHON_VERSION = '0.4.6'
+CLAMS_PYTHON_VERSION = '0.5.1'
 
+
+# The name of the Kaldi app, used to select views
+KALDI = 'http://apps.clams.ai/kaldi/'
 
 # Bounding boxes have a time point, but what we are looking for below is to find
 # a start and an end in the video so we manufacture an end point. Set to 1000ms
-# because Tessearct samples every second
+# because Tesseract samples every second
 # TODO: this is not used anymore, probably needs to be re-introduced
 MINIMAL_TIMEFRAME_LENGTH = 1000
 
 # When a named entity occurs 20 times we do not want to generate 20 instances of
-# pbcoreSubject. If the start of the next entity occurs within the below number
-# of miliseconds after the end of the previous, then it is just added to the
+# it. If the start of the next entity occurs within the below number of
+# miliseconds after the end of the previous, then it is just added to the
 # previous one. Taking one minute as the default so two mentions in a minute end
 # up being the same instance. This setting can be changed with the 'granularity'
 # parameter.
-GRANULARITY = 60000
+# TODO: this seems broken
+GRANULARITY = 1000
 GRANULARITY_HELP = 'maximum interval between two entities in the same cluster'
 
 # The transcript is probably the largest part of the summary, but in some cases
@@ -97,7 +101,8 @@ TRANSCRIPT = True
 TRANSCRIPT_HELP = ''
 
 # Properties used for the summary for various tags
-DOC_PROPS = ('type', 'location')
+DOC_PROPS = ('id', 'type', 'location')
+VIEW_PROPS = ('id', 'timestamp', 'app')
 TF_PROPS = ('id', 'start', 'end', 'frameType')
 E_PROPS = ('id', 'group', 'cat', 'tag', 'video-start', 'video-end', 'coordinates')
 
@@ -127,107 +132,170 @@ class MmifSummarizer(ClamsConsumer):
         return self.metadata
 
     def _consume(self, mmif, **kwargs):
-        #print('>>>', kwargs)
         self.mmif = mmif if type(mmif) is Mmif else Mmif(mmif)
-        self.summarizer = Summarizer(mmif, **kwargs)
-        return self.summarizer.as_xml()
+        summary = Summary(mmif, **kwargs)
+        return summary.as_xml()
+        #print('!!! returning None for now')
 
 
-class Summarizer(object):
+class Summary(object):
 
-    def __init__(self, mmif: Mmif, **kwargs: dict):
-        global GRANULARITY, TRANSCRIPT
-        GRANULARITY = kwargs.get('granularity', GRANULARITY)
-        TRANSCRIPT = kwargs.get('transcript', TRANSCRIPT)
+    """Implements the summary of a MMIF file.
+
+    granularity     -  boolean used for combining entities
+    add_transcript  -  boolean to determine whether a transcript is added
+    mmif            -  instance of mmif.serialize.Mmif
+    graph           -  instance of graph.Graph
+    documents       -  instance of Documents
+    views           -  instance of Views
+    transcript      -  instance of Transcript
+    tags            -  instance of SummarizedTags
+    timeframes      -  instance of SummarizedTimeFrames
+    entities        -  instance of SummarizedEntities
+
+    """
+
+    def __init__(self, mmif, **args):
+        self.granularity = args.get('granularity', GRANULARITY)
+        self.add_transcript = args.get('transcript', TRANSCRIPT)
         self.mmif = mmif if type(mmif) is Mmif else Mmif(mmif)
-        self.graph = Graph(mmif)
-        #self.graph.pp('pp-graph.txt')
-        #self.graph.token_idx.pp('pp-tokens.txt')
-        #self._show_paths()
-        self.summarize()
-
-    def summarize(self):
-        self.timeframes = SummarizedTimeFrames(self.graph)
-        self.tags = SummarizedTags(self.graph)
-        self.entities = SummarizedEntities(self.graph)
-        self.entities.group()
-        self.entities.add_tags(self.tags)
-        self.transcript = self.get_transcript()
-        self.summary = {
-            'Documents': [],
-            'Transcript': self.transcript,
-            'TimeFrames': [],
-            'Entities': {} }
-        for document in self.graph.documents:
-            self.summary['Documents'].append(
-                { 'type': document.at_type.shortname,
-                  'location': document.location })
-        for tf in self.timeframes:
-            self.summary['TimeFrames'].append(tf.node_summary())
-        for text in self.entities.nodes_idx:
-            self.summary['Entities'][text] = []
-            for ent in self.entities.nodes_idx[text]:
-                self.summary['Entities'][text].append(ent.node_summary())
-
-    def _show_paths(self):
-        # some experimentation with paths from tokens
-        for node in self.graph.get_nodes(names.TOKEN):
-            paths = node.paths_to_docs()
-            print_paths(paths)
-
-    def get_transcript(self):
-        """Returns the document text from the most recent kaldi view."""
-        kaldi_view = None
-        for view in self.mmif.views:
-            # TODO: a bit fragile perhaps
-            if 'kaldi' in view.metadata.app:
-                kaldi_view = view
-        transcript = None
-        for anno in kaldi_view.annotations:
-            if anno.at_type.shortname == names.TEXT_DOCUMENT:
-                return anno.properties['text'].value
- 
-    def print_summary(self):
-        print(json.dumps(self.summary, indent=4))
+        self.graph = Graph(self.mmif)
+        self.documents = Documents(self)
+        self.views = Views(self)
+        self.transcript = Transcript(self)
+        self.tags = SummarizedTags(self)
+        self.timeframes = SummarizedTimeFrames(self)
+        self.entities = SummarizedEntities(self)
 
     def as_xml(self):
         s = io.StringIO()
         s.write('<Summary>\n')
-        s.write('  <Documents>\n')
-        for doc in self.summary['Documents']:
-            self.write_tag(s, 'Document', '    ', doc, DOC_PROPS)
-        s.write('  </Documents>\n')
-        if TRANSCRIPT:
-            s.write('  <Transcript text=%s/>\n' % quoteattr(self.transcript))
-        s.write('  <TimeFrames>\n')
-        for tf in self.summary['TimeFrames']:
-            self.write_tag(s,'TimeFrame', '    ', tf, TF_PROPS)
-        s.write('  </TimeFrames>\n')
-        s.write('  <Entities>\n')
-        for text in self.summary['Entities']:
-            s.write('    <Entity text=%s>\n' % quoteattr(text))
-            for e in self.summary['Entities'][text]:
-                self.write_tag(s,'Instance', '      ', e, E_PROPS)
-            s.write('    </Entity>\n')
-        s.write('  </Entities>\n')
+        s.write(self.documents.as_xml())
+        s.write(self.views.as_xml())
+        if self.add_transcript:
+            s.write(self.transcript.as_xml())
+        s.write(self.timeframes.as_xml())
+        s.write(self.entities.as_xml())
         s.write('</Summary>\n')
         return s.getvalue()
 
-    def write_tag(self, s, tagname, indent, obj, props):
-        pairs = []
-        for prop in props:
-            if prop in obj:
-                pairs.append("%s=%s" % (prop, quoteattr(str(obj[prop]))))
-        s.write('%s<%s %s/>\n'
-                % (indent, tagname, ' '.join(pairs)))
+    def pp(self):
+        self.documents.pp()
+        self.views.pp()
+        self.transcript.pp()
+        self.timeframes.pp()
+        self.entities.pp()
+        print()
+
+
+class Documents(object):
+
+    """Contains a list of document summaries, which are dictionaries with just
+    the id, type and location properties."""
+
+    def __init__(self, summary):
+        self.data = [self.doc_summary(doc) for doc in summary.graph.documents]
+
+    @staticmethod
+    def doc_summary(doc):
+        return { 'id': doc.id,
+                 'type': doc.at_type.shortname,
+                 'location': doc.location }
+
+    def as_xml(self):
+        return as_xml('Document', self.data, DOC_PROPS)
+
+    def pp(self):
+        print('\nDocuments -> ')
+        for d in self.data:
+            print('    %s %s' % (d['type'], d['location']))
+
+
+class Views(object):
+
+    """Contains a list of view summaries, which are dictionaries with just
+    the id, app and timestamp properties."""
+
+    def __init__(self, summary):
+        self.data = [self.view_summary(view) for view in summary.mmif.views]
+
+    @staticmethod
+    def view_summary(view):
+        return { 'id': view.id,
+                 'app': view.metadata.app,
+                 'timestamp': view.metadata.timestamp }
+
+    def as_xml(self):
+        return as_xml('View', self.data, VIEW_PROPS)
+
+    def pp(self):
+        print('\nViews -> ')
+        for v in self.data:
+            print('    %s' % v['app'])
+
+
+class Transcript(object):
+
+    """The transcript contains the string value from the first text document in
+    the Kaldi view (there should be only one text document in that view)."""
+
+    # TODO: should make this a list of sentences or paragraphs, depending on
+    #       what is available in the MMIF file
+    # TODO: should take the latest fastpunct view if available
+
+    def __init__(self, summary):
+        """Returns the document text from the most recent kaldi view."""
+        self.data = []
+        views = [view for view in summary.mmif.views
+                 if view.metadata.app.startswith(KALDI)]
+        if views:
+            for anno in views[-1].annotations:
+                # find the first text document in the Kaldi view
+                if anno.at_type.shortname == names.TEXT_DOCUMENT:
+                    text = anno.properties['text'].value
+                    #text = f"{text} {text} {text}"
+                    lines = text.split('. ')
+                    for line in lines[:-1]:
+                        self.data.append(line + '.')
+                    self.data.append(lines[-1])
+                    break
+
+    def __str__(self):
+        return str(self.data)
+
+    def as_xml(self):
+        s = io.StringIO()
+        s.write('  <Transcript>\n')
+        for line in self.data:
+            s.write('    <line>%s</line>\n' % xml_data(line))
+        s.write('  </Transcript>\n')
+        return s.getvalue()
+
+    def pp(self):
+        print('\nTranscript -> ')
+        print('    %s' % self.data[:80].replace('\n', ' '))
 
 
 class SummarizedNodes(object):
 
-    def __init__(self, graph):
-        self.graph = graph
+    """Abstract class to store instances of subclasses of graph.Node. The
+    initialization methods of subclasses of SummarizedNodes can guard what nodes
+    will be allowed in, for example, as of July 2022 the SummarizedTimeFrames
+    class only allowed time frames that had a frame type (thereby blocking the
+    many timeframes from Kaldi).
+
+    Instance variables:
+
+    summary    -  an instance of Summary
+    graph      -  an instance of graph.Graph, taken from the summary
+    nodes      -  list of instances of subclasses of graph.Node
+
+    """
+
+    def __init__(self, summary):
+        self.summary = summary
+        self.graph = summary.graph
         self.nodes = []
-        self.nodes_idx = {}
 
     def __getitem__(self, i):
         return self.nodes[i]
@@ -244,50 +312,84 @@ class SummarizedTimeFrames(SummarizedNodes):
     """For now we take only the TimeFrames that have a frame type, which rules out
     all the frames we got from Kaldi."""
 
-    def __init__(self, graph):
-        super().__init__(graph)
+    def __init__(self, summary):
+        super().__init__(summary)
         for timeframe in self.graph.get_nodes(names.TIME_FRAME):
             if timeframe.has_frame_type():
                 self.add(timeframe)
+
+    def as_xml(self):
+        s = io.StringIO()
+        s.write('  <TimeFrames>\n')
+        for tf in self.nodes:
+            write_tag(s, 'TimeFrame', '    ', tf.summary(), TF_PROPS)
+        s.write('  </TimeFrames>\n')
+        return s.getvalue()
+
+    def pp(self):
+        print('\nTimeframes -> ')
+        for tf in self.nodes:
+            summary = tf.summary()
+            print('    %s:%s %s' % (summary['start'], summary['end'],
+                                    summary['frameType']))
 
 
 class SummarizedTags(SummarizedNodes):
 
     """For now we take all semantic tags."""
 
-    def __init__(self, graph):
-        super().__init__(graph)
+    def __init__(self, summary):
+        super().__init__(summary)
         for tag in self.graph.get_nodes(names.SEMANTIC_TAG):
             self.add(tag)
 
 
 class SummarizedEntities(SummarizedNodes):
 
-    def __init__(self, graph):
-        super().__init__(graph)
+    """Collecting instances of graph.EntityNode.
+
+    nodes_idx  -  lists of instances of graph.EntityNode, indexed on entity text
+                  { entity-string ==> list of graph.EntityNode }
+    bins       -  an instance of Bins
+
+    """
+
+    def __init__(self, summary):
+        super().__init__(summary)
+        self.nodes_idx = {}
+        self.bins = None
         for ent in self.graph.get_nodes(names.NAMED_ENTITY):
             self.add(ent)
+        self._create_node_index()
+        self._group()
+        self._add_tags(summary.tags)
 
-    def group(self):
-        """Groups all the nodes on the text and sorts them on position in the video,
-        for the latter it will also created bins of entities that occur close to each
-        other in the text."""
-        # first put the nodes in a dictionary indexed on text string
+    def _create_node_index(self):
+        """Put all the entities from self.nodes in self.node_idx. This first puts
+        the nodes into the dictionary indexed on text string and then sorts the
+        list of nodes for each string on video position."""
         for e in self:
             self.nodes_idx.setdefault(e.properties['text'], []).append(e)
         for text, entities in self.nodes_idx.items():
             self.nodes_idx[text] = sorted(entities,
                                           key=(lambda e: e.start_in_video()))
-        # then create the bins, governed by the GRANULARITY setting
-        self.bins = Bins()
+
+    def _group(self):
+        """Groups all the nodes on the text and sorts them on position in the video,
+        for the latter it will also created bins of entities that occur close to each
+        other in the text."""
+        #print('>>> grouping entities, granularity=%s' % self.summary.granularity)
+        # create the bins, governed by the summary's granularity
+        self.bins = Bins(self.summary)
         for text, entities in self.nodes_idx.items():
-            self.bins.add_entity(text, entities[0])
-            for entity in entities[1:]:
-                self.bins.add_instance(entity)
+            #print('>>> adding %d instances of "%s"' % (len(entities), text))
+            self.bins.current_bin = None
+            for entity in entities:
+                self.bins.add_entity(text, entity)
         self.bins.mark_entities()
         #self.bins.print_bins()
 
-    def add_tags(self, tags):
+    def _add_tags(self, tags):
         for tag in tags:
             tag_doc = tag.properties['document']
             tag_p1 = tag.properties['start']
@@ -306,6 +408,25 @@ class SummarizedEntities(SummarizedNodes):
                     entity.properties['tag'] = tag.properties['tagName']
                     #print('           ', entity.properties)
 
+    def as_xml(self):
+        s = io.StringIO()
+        s.write('  <Entities>\n')
+        for text in self.nodes_idx:
+            s.write('    <Entity text=%s>\n' % xml_attribute(text))
+            for e in self.nodes_idx[text]:
+                write_tag(s, 'Instance', '      ', e.summary(), E_PROPS)
+            s.write('    </Entity>\n')
+        s.write('  </Entities>\n')
+        return s.getvalue()
+
+    def pp(self):
+        print('\nEntities -> ')
+        for e in self.nodes_idx:
+            print('    %s' % e)
+            for d in self.nodes_idx[e]:
+                props = ["%s=%s" % (p, v) for p, v in d.summary().items()]
+                print('        %s' % ' '.join(props))
+
     def print_groups(self):
         for key in sorted(self.nodes_idx):
             print(key)
@@ -317,27 +438,42 @@ class SummarizedEntities(SummarizedNodes):
 
 class Bins(object):
 
-    def __init__(self):
+    def __init__(self, summary):
+        self.summary = summary
         self.bins = {}
+        self.current_bin = None
 
     def add_entity(self, text, entity):
-        #print('>>> add_entity', text, entity)
-        self.current_text = text
-        self.current_bin = Bin(entity)
-        self.bins[text] = [self.current_bin]
-
-    def add_instance(self, entity):
-        p1 = self.current_bin[-1].start_in_video()
-        p2 = entity.start_in_video()
-        #print('--- add_instance', entity, p1, p2)
-        if p2 - p1 < GRANULARITY:
-            self.current_bin.add(entity)
-        else:
+        """Add an entity instance to the appropriate bin."""
+        if self.current_bin is None:
+            # Add the first instance of a new entity (as defined by the text),
+            # since it is the first a new bin will be created.
+            self.current_text = text
             self.current_bin = Bin(entity)
-            self.bins[self.current_text].append(self.current_bin)
+            self.bins[text] = [self.current_bin]
+            #print('   ', entity, end='')
+            #print('  -- added new bin')
+        else:
+            # For following entities with the same text, a new bin may be
+            # created depending on the positions and the granularity.
+            p1 = self.current_bin[-1].start_in_video()
+            p2 = entity.start_in_video()
+            p3 = entity.end_in_video()
+            #print('   ', entity, p1, p2, end='')
+            if p2 - p1 < self.summary.granularity:
+                #print('  -- added to current bin')
+                # TODO: should add p3 here
+                self.current_bin.add(entity)
+            else:
+                #print('  -- added new bin')
+                self.current_bin = Bin(entity)
+                self.bins[self.current_text].append(self.current_bin)
 
     def mark_entities(self):
-        """Marks all entities with the bin that they occur in."""
+        """Marks all entities with the bin that they occur in. This is done to export
+        the grouping done with the bins to the entities and this way the bins never need
+        to be touched again."""
+        # TODO: maybe use the bins when we create the output
         for entity_bins in self.bins.values():
             for i, ebin in enumerate(entity_bins):
                 for entity in ebin:
@@ -346,15 +482,21 @@ class Bins(object):
     def print_bins(self):
         for text in self.bins:
             print(text)
-            bins = self.bins[text]
-            for i, ebin in enumerate(bins):
-                ebin.print_nodes(i)
+            text_bins = self.bins[text]
+            for i, text_bin in enumerate(text_bins):
+                text_bin.print_nodes(i)
             print()
 
 
 class Bin(object):
 
     def __init__(self, node):
+        # TODO: we are not using these yet, but a bin should have a begin and
+        # end in the video which should be derived from the start and end of
+        # entities in the video. The way we put things in bins now is a bit
+        # fragile since it depends on the start or end of the last element.
+        self.start = 0
+        self.end = 0
         self.nodes = [node]
 
     def __getitem__(self, i):
@@ -377,7 +519,7 @@ def start_service():
 def test_on_sample(fname):
     summarizer = MmifSummarizer()
     result = summarizer.consume(open(fname).read(),
-                                granularity=800,
+                                granularity=GRANULARITY,
                                 transcript=True,
                                 transcript_mode='sentence')
     print(result)
