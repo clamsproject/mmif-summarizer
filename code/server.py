@@ -1,6 +1,6 @@
 """server.py
 
-The classes in this module are all adapted from the clams-python serve and
+The classes in this module are all adapted from the clams-python app and
 restify modules, but the following changes were made:
 
 - Parameterized the mimetype (since it is probably not standardized).
@@ -18,7 +18,6 @@ code in here could be added to clams-python in some form.
 
 
 from abc import ABC, abstractmethod
-import json
 from flask import Flask, request, Response
 from flask_restful import Resource, Api
 
@@ -28,7 +27,7 @@ from mmif import Mmif
 class ClamsConsumer(ABC):
 
     def __init__(self):
-        self.metadata: dict = self._consumermetadata()
+        self.metadata = self._consumermetadata()
         super().__init__()
 
     def consumermetadata(self):
@@ -42,7 +41,7 @@ class ClamsConsumer(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def _consume(self, mmif) -> str:
+    def _consume(self, mmif, **kwargs) -> str:
         raise NotImplementedError()
 
 
