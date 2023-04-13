@@ -1,11 +1,11 @@
-import json
+import sys, json
 from operator import itemgetter
 
 from mmif import Mmif
 
 import names
 from utils import compose_id
-from utils import flatten_paths, print_paths
+from utils import flatten_paths
 
 
 class Graph(object):
@@ -92,16 +92,9 @@ class TokenIndex(object):
         # Make sure the tokens for each document are ordered.
         for document, token_list in self.tokens.items():
             self.tokens[document] = sorted(token_list, key=itemgetter(0))
-        # In some cases there will be two tokens with identical offset (for
-        # example with tokenization from both Kaldi and spaCy, not sure what to
-        # do with these, but started some code to filter them, it doesn't do
-        # anything at the moment.
-        for document_id in self.tokens:
-            view_id = document_id.split(':')[0]
-            #print(view_id)
-            for (start, end), token in self.tokens[document_id]:
-                token_view = token.identifier.split(':')[0]
-                #print(' ', token.identifier, token_view)
+        # In some cases there are two tokens with identical offset (for example
+        # with tokenization from both Kaldi and spaCy, not sure what to do with
+        # these, but should probably be more careful on what views to access
 
     def get_tokens_for_node(self, node):
         """Return all tokens included in the span of a node."""
@@ -144,9 +137,9 @@ class Node(object):
     def __str__(self):
         anchor = ''
         if self.at_type.shortname == names.TOKEN:
-            anchor =  " %s:%s '%s'" % (self.properties['start'],
-                                       self.properties['end'],
-                                       self.properties['text'])
+            anchor = " %s:%s '%s'" % (self.properties['start'],
+                                      self.properties['end'],
+                                      self.properties['text'])
         return "<%s %s%s>" % (self.at_type.shortname, self.identifier, anchor)
 
     def _get_view_id(self):
@@ -223,11 +216,15 @@ class Node(object):
 class TimeFrameNode(Node):
 
     def __str__(self):
-        return ('<TimeFrameNode %s %s:%s %s>'
-                % (self.identifier,
-                   self.properties['start'],
-                   self.properties['end'],
-                   self.frame_type()))
+        frame_type = ' ' + self.frame_type() if self.has_frame_type() else ''
+        return ('<TimeFrameNode %s %s:%s%s>'
+                % (self.identifier, self.start(), self.end(), frame_type))
+
+    def start(self):
+        return self.properties['start']
+
+    def end(self):
+        return self.properties['end']
 
     def frame_type(self):
         return self.properties.get('frameType')
@@ -295,10 +292,10 @@ class EntityNode(Node):
         # TODO: deal with the case where the primary document is not a video
         self.paths = self.paths_to_docs()
         bbtf = self.find_boundingbox_or_timeframe()
-        #for path in paths:
-        #    print('... [')
-        #    for n in path: print('     ', n)
-        #print('===', bbtf)
+        # for path in paths:
+        #     print('... [')
+        #     for n in path: print('     ', n)
+        # print('===', bbtf)
         if bbtf.at_type.shortname == names.BOUNDING_BOX:
             return {'video-start': bbtf.properties['timePoint'],
                     'coordinates': bbtf.properties['coordinates']}
@@ -320,16 +317,16 @@ class EntityNode(Node):
         if self._anchor is None:
             self._paths = self.paths_to_docs()
             bbtf = self.find_boundingbox_or_timeframe()
-            #for path in self._paths:
+            # for path in self._paths:
             #    print('... [')
             #    for n in path: print('     ', n)
-            #print('===', bbtf)
+            # print('===', bbtf)
             if bbtf.at_type.shortname == names.BOUNDING_BOX:
                 self._anchor = {'video-start': bbtf.properties['timePoint'],
-                               'coordinates': bbtf.properties['coordinates']}
+                                'coordinates': bbtf.properties['coordinates']}
             elif bbtf.at_type.shortname == names.TIME_FRAME:
                 self._anchor = {'video-start': bbtf.properties['start'],
-                               'video-end': bbtf.properties['end']}
+                                'video-end': bbtf.properties['end']}
         return self._anchor
 
     def find_boundingbox_or_timeframe(self):

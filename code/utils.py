@@ -1,11 +1,13 @@
-"""util.py
-
-Module with utility methods.
+"""Utility methods
 
 """
 
 import io
 from xml.sax.saxutils import quoteattr, escape
+from collections import UserList
+
+from config import KALDI, WHISPER, SEGMENTER
+from names import TOKEN, ALIGNMENT, TIME_FRAME
 
 
 def compose_id(view_id, anno_id):
@@ -18,19 +20,114 @@ def type_name(annotation):
     return annotation.at_type.split('/')[-1]
 
 
-def as_xml(tag, objs, props):
-    """Return an XML string for a list of instances of tag."""
+def get_last_asr_view(views):
+    for view in reversed(views):
+        for app in KALDI, WHISPER:
+            if view.metadata.app.startswith(app):
+                return view
+    return None
+
+def get_last_segmenter_view(views):
+    for view in reversed(views):
+        # print(f'>>> {view.metadata.app}')
+        if view.metadata.app.startswith(SEGMENTER):
+            return view
+    return None
+
+def get_aligned_tokens(view):
+    """Get a list of tokens from an ASR view where for each token we add a timeframe
+    properties which has the start and end points of the aligned timeframe."""
+    idx = AnnotationsIndex(view)
+    for alignment in idx.get_annotations(ALIGNMENT).values():
+        token = idx[TOKEN].get(alignment.properties['target'])
+        frame = idx[TIME_FRAME].get(alignment.properties['source'])
+        if token and frame:
+            # add a timeframe to the token, we can do this now that we do not
+            # freeze MMIF annotations anymore
+            token.properties['timeframe'] = (frame.properties['start'],
+                                             frame.properties['end'])
+    return idx.tokens
+
+
+class AnnotationsIndex:
+
+    """Creates an index on the annotations list for a view, where each annotation type
+    is indexed on its identifier. Tokens are special and get their own list."""
+
+    def __init__(self, view):
+        self.view = view
+        self.idx = {}
+        self.tokens = []
+        for annotation in view.annotations:
+            shortname = annotation.at_type.shortname
+            if shortname == TOKEN:
+                self.tokens.append(annotation)
+            self.idx.setdefault(annotation.at_type.shortname, {})
+            self.idx[shortname][annotation.properties.id] = annotation
+
+    def __str__(self):
+        return f'<AnnotationsIndex on view {self.view.id} {self.view.metadata.app}>'
+
+    def __getitem__(self, item):
+        return self.idx[item]
+
+    def get_annotations(self, at_type):
+        return self.idx.get(at_type, {})
+
+
+class CharacterList(UserList):
+
+    """Auxiliary datastructure to help print a list of tokens. It allows you to
+    back-engineer a sentence from the text and character offsets of the tokens."""
+
+    def __init__(self, n: int, char=' '):
+        self.char = char
+        self.data = n * [char]
+
+    def __str__(self):
+        return f'<CharacterList [{self.getvalue()}]>'
+
+    def __setitem__(self, key, value):
+        try:
+            self.data[key] = value
+        except IndexError:
+            for i in range(len(self), key + 1):
+                self.data.append(self.char)
+            self.data[key] = value
+
+    def set_chars(self, text: str, start: int, end: int):
+        self.data[start:end] = text
+
+    def getvalue(self):
+        return ''.join(self.data)
+
+
+def xml_tag(tag, subtag, objs, props, indent='  ') -> str:
+    """Return an XML string for a list of instances of subtag, grouped under tag."""
     s = io.StringIO()
-    s.write('  <%ss>\n' % tag)
+    s.write(f'{indent}<{tag}>\n')
     for obj in objs:
-        write_tag(s, tag, '    ', obj, props)
-    s.write('  </%ss>\n' % tag)
+        s.write(xml_empty_tag(subtag, indent + '  ', obj, props))
+    s.write(f'{indent}</{tag}>\n')
     return s.getvalue()
 
 
+def xml_empty_tag(tag_name: str, indent: str, obj: dict, props: tuple) -> str:
+    """Return an XML tag to an instance of io.StringIO(). Only properties from obj
+    that are in the props tuple are printed."""
+    pairs = []
+    for prop in props:
+        if prop in obj:
+            if obj[prop] is not None:
+                #pairs.append("%s=%s" % (prop, xml_attribute(obj[prop])))
+                pairs.append(f'{prop}={xml_attribute(obj[prop])}')
+    attrs = ' '.join(pairs)
+    return f'{indent}<{tag_name} {attrs}/>\n'
+
+
 def write_tag(s, tagname: str, indent: str, obj: dict, props: tuple):
-    """Write an XML tag to stringbuffer s. Only properties from obj that are in
-    the props tuple are printed."""
+    """Write an XML tag to an instance of io.StringIO(). Only properties from obj
+    that are in the props tuple are printed."""
     pairs = []
     for prop in props:
         if prop in obj:
@@ -84,8 +181,10 @@ def print_path(p):
 
 
 def get_annotations_from_view(view, annotation_type):
-    """Return all annotation from a view that match the annotation type."""
-    # TODO: there is probably a method on View for this
+    """Return all annotations from a view that match the short name of the
+    annotation type."""
+    # Note: there is method mmif.View.get_annotations() where you can give
+    # at_type as a parameter, but it requires a full match.
     return [a for a in view.annotations
             if a.at_type.shortname == annotation_type]
 

@@ -95,11 +95,6 @@ class ClamsConsumerRestfulApi(Resource):
 def cast(params):
     """A temporary stub to deal with parameters for this consumer. This is awaiting
     the code that hooks up this consumer to the parameter casting code."""
-    true_values = ('True', 'true', '1', 'yes')
-    casted = {}
-    if 'granularity' in params:
-        casted['granularity'] = int(params['granularity'])
-    if 'transcript' in params:
-        val = params['transcript']
-        casted['transcript'] = True if val in true_values else False
-    return casted
+    def is_true(val):
+        return val in ('True', 'true', '1', 'yes', '')
+    return { param: is_true(value) for param, value in params.items()}

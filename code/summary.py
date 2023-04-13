@@ -1,16 +1,10 @@
 """MMIF Summarizer
 
-MMIF consumer that creates a summary XML file.
+MMIF consumer that creates a JSON summary from a MMIF file.
 
 Makes some simplifying assumptions, some of them need to be revisited:
 
-- The transcript is taken from the last Kaldi view.
-
-- The input is the output of a pipeline where Kaldi and/or EAST/Tesseract run on
-  a video file followed by spaCy NER.
-
-- The example input file has perfect Kaldi performance which produces
-  capitalization and punctuation.
+- The transcript is taken from the last ASR view.
 
 - There is one video in the MMIF documents list. All start and end properties
   are pointing to that video.
@@ -21,82 +15,96 @@ Makes some simplifying assumptions, some of them need to be revisited:
 - Makes no distinction between named entities found in the slate and those found
   in OCR elsewhere or via Kaldi.
 
-- The identifier is assumed to be the local file path to the video document.
-
 USAGE:
 
-Run the summarizer on one of the simple example input documents:
+$ python summary.py [OPTIONS] examples/input-v7.mmif
 
-$ python summary.py examples/input-v7.mmif
-$ python summary.py examples/input-v9.mmif
+Run the summarizer on one of the simple example input documents.
 
-The second one is like the first one but also includes spaCy annotations.
-
-TODO:
-
-- entities from spacy are aligned with full document, not tokens therein
-- define summary() to create a summary and then separate the export into XML
-  versus JSON
-- run this on a real file with Kaldi and other real annotations:
-    Bars-and-tone --> Slate Recognition --> Slate parser mockup -->
-    Segmenter --> Kaldi --> EAST --> Tesseract --> SpacyNER
 """
 
-import io, sys
+import io, json, argparse
 
 from mmif.serialize import Mmif
+from mmif.vocabulary import DocumentTypes
 
-from utils import as_xml, write_tag, xml_attribute, xml_data
+from utils import CharacterList
+from utils import get_last_asr_view, get_last_segmenter_view, get_aligned_tokens
 from graph import Graph
 import names
-from config import GRANULARITY, TRANSCRIPT, KALDI
-from config import TF_PROPS, E_PROPS, VIEW_PROPS, DOC_PROPS
+from config import GRANULARITY
 
 
-VERSION = '0.2.0'
-LICENSE = 'Apache 2.0'
+class SummaryException(Exception):
+    pass
 
 
 class Summary(object):
 
     """Implements the summary of a MMIF file.
 
-    granularity     -  boolean used for combining entities
-    add_transcript  -  boolean to determine whether a transcript is added
     mmif            -  instance of mmif.serialize.Mmif
     graph           -  instance of graph.Graph
     documents       -  instance of Documents
     views           -  instance of Views
     transcript      -  instance of Transcript
-    tags            -  instance of SummarizedTags
-    timeframes      -  instance of SummarizedTimeFrames
-    entities        -  instance of SummarizedEntities
+    tags            -  instance of Tags
+    timeframes      -  instance of TimeFrames
+    entities        -  instance of Entities
 
     """
 
-    def __init__(self, mmif, **args):
-        self.granularity = args.get('granularity', GRANULARITY)
-        self.add_transcript = args.get('transcript', TRANSCRIPT)
+    def __init__(self, mmif):
         self.mmif = mmif if type(mmif) is Mmif else Mmif(mmif)
+        self.warnings = []
         self.graph = Graph(self.mmif)
         self.documents = Documents(self)
         self.views = Views(self)
         self.transcript = Transcript(self)
-        self.tags = SummarizedTags(self)
-        self.timeframes = SummarizedTimeFrames(self)
-        self.entities = SummarizedEntities(self)
+        self.tags = Tags(self)
+        self.timeframes = TimeFrames(self)
+        self.segments = Segments(self)
+        self.entities = Entities(self)
+        self.validate()
+        self.print_warnings()
+        #self.graph.pp()
 
-    def as_xml(self):
-        s = io.StringIO()
-        s.write('<Summary>\n')
-        s.write(self.documents.as_xml())
-        s.write(self.views.as_xml())
-        if self.add_transcript:
-            s.write(self.transcript.as_xml())
-        s.write(self.timeframes.as_xml())
-        s.write(self.entities.as_xml())
-        s.write('</Summary>\n')
-        return s.getvalue()
+    def validate(self):
+        if len(self.video_documents()) > 1:
+            raise SummaryException("More than one video document in MMIF file")
+
+    def video_documents(self):
+        return self.mmif.get_documents_by_type(DocumentTypes.VideoDocument)
+
+    def report(self, views=False, full=False, transcript=False,
+               segments=False, barsandtone=False, slate=False, chyrons=False,
+               credits=False, entities=False):
+        json_obj = {
+            'mmif_version': self.mmif.metadata.mmif,
+            'documents': self.documents.data}
+        if views or full:
+            json_obj['views'] = self.views.data
+        if transcript or full:
+            json_obj['transcript'] = self.transcript.data
+        if barsandtone or full:
+            nodes = self.timeframes.get_nodes(frameType='bars-and-tone')
+            json_obj['bars-and-tone'] = [n.summary() for n in nodes]
+        if slate or full:
+            nodes = self.timeframes.get_nodes(frameType='slate')
+            json_obj['slate'] = [n.summary() for n in nodes]
+        if segments or full:
+            json_obj['segments'] = [n.summary() for n in self.segments]
+        if chyrons or full:
+            pass
+        if credits or full:
+            pass
+        if entities or full:
+            json_obj['entities'] = self.entities.as_json()
+        return json.dumps(json_obj, indent=2)
+
+    def print_warnings(self):
+        for warning in self.warnings:
+            print(f'WARNING: {warning}')
 
     def pp(self):
         self.documents.pp()
@@ -113,16 +121,16 @@ class Documents(object):
     the id, type and location properties."""
 
     def __init__(self, summary):
-        self.data = [self.doc_summary(doc) for doc in summary.graph.documents]
+        self.data = [self.summary(doc) for doc in summary.graph.documents]
+
+    def __len__(self):
+        return len(self.data)
 
     @staticmethod
-    def doc_summary(doc):
+    def summary(doc):
         return { 'id': doc.id,
                  'type': doc.at_type.shortname,
                  'location': doc.location }
-
-    def as_xml(self):
-        return as_xml('Document', self.data, DOC_PROPS)
 
     def pp(self):
         print('\nDocuments -> ')
@@ -136,16 +144,13 @@ class Views(object):
     the id, app and timestamp properties."""
 
     def __init__(self, summary):
-        self.data = [self.view_summary(view) for view in summary.mmif.views]
+        self.data = [self.summary(view) for view in summary.mmif.views]
 
     @staticmethod
-    def view_summary(view):
+    def summary(view):
         return { 'id': view.id,
                  'app': view.metadata.app,
                  'timestamp': view.metadata.timestamp }
-
-    def as_xml(self):
-        return as_xml('View', self.data, VIEW_PROPS)
 
     def pp(self):
         print('\nViews -> ')
@@ -155,53 +160,60 @@ class Views(object):
 
 class Transcript(object):
 
-    """The transcript contains the string value from the first text document in
-    the Kaldi view (there should be only one text document in that view)."""
+    """The transcript contains the string value from the first text document in the
+    last ASR view. It issues a warning if there is more than one text document in
+    the view."""
 
     # TODO: should make this a list of sentences or paragraphs, depending on
     #       what is available in the MMIF file
-    # TODO: should take the latest fastpunct view if available
+    # TODO: add offsets to sentences
+    # TODO: should take the latest fastpunct view if we have a Kaldi view
 
     def __init__(self, summary):
-        """Returns the document text from the most recent kaldi view."""
         self.data = []
-        views = [view for view in summary.mmif.views
-                 if view.metadata.app.startswith(KALDI)]
-        if views:
-            for anno in views[-1].annotations:
-                # find the first text document in the Kaldi view
-                if anno.at_type.shortname == names.TEXT_DOCUMENT:
-                    text = anno.properties['text'].value
-                    # text = f"{text} {text} {text}"
-                    lines = text.split('. ')
-                    for line in lines[:-1]:
-                        self.data.append(line + '.')
-                    self.data.append(lines[-1])
-                    break
+        view = get_last_asr_view(summary.mmif.views)
+        if view:
+            documents = view.get_documents()
+            if len(documents) > 1:
+                summary.warnings.append(f'More than one TextDocument in ASR view {view.id}')
+            tokens = get_aligned_tokens(view)
+            current_sentence = []
+            for token in tokens:
+                current_sentence.append(token)
+                if token.properties['text'] in ('.', '?', '!'):
+                    self.add_sentence(current_sentence)
+                    current_sentence = []
+            if current_sentence:
+                self.add_sentence(current_sentence)
 
     def __str__(self):
         return str(self.data)
 
-    def as_xml(self):
-        s = io.StringIO()
-        s.write('  <Transcript>\n')
-        for line in self.data:
-            s.write('    <line>%s</line>\n' % xml_data(line))
-        s.write('  </Transcript>\n')
-        return s.getvalue()
+    def add_sentence(self, sentence: list):
+        if not sentence:
+            return
+        start = sentence[0].properties['timeframe'][0]
+        end = sentence[-1].properties['timeframe'][1]
+        end_char = sentence[-1].properties['end']
+        tokens = [t.properties['text'] for t in sentence]
+        text = CharacterList(end_char)
+        for token in sentence:
+            text.set_chars(token.properties['text'],
+                           token.properties['start'], token.properties['end'])
+        self.data.append([text.getvalue(), start, end])
 
     def pp(self):
         print('\nTranscript -> ')
         print('    %s' % self.data[:80].replace('\n', ' '))
 
 
-class SummarizedNodes(object):
+class Nodes(object):
 
     """Abstract class to store instances of subclasses of graph.Node. The
-    initialization methods of subclasses of SummarizedNodes can guard what nodes
-    will be allowed in, for example, as of July 2022 the SummarizedTimeFrames
-    class only allowed time frames that had a frame type (thereby blocking the
-    many timeframes from Kaldi).
+    initialization methods of subclasses of Nodes can guard what nodes will
+    be allowed in, for example, as of July 2022 the TimeFrames class only
+    allowed time frames that had a frame type (thereby blocking the many
+    timeframes from Kaldi).
 
     Instance variables:
 
@@ -225,25 +237,28 @@ class SummarizedNodes(object):
     def add(self, node):
         self.nodes.append(node)
 
+    def get_nodes(self, **props):
+        """Return all the nodes that match the given properties."""
+        def prop_check(p, v, props_given):
+            return v == props_given.get(p) if p in props_given else False
+        return [n for n in self
+                if all([prop_check(p, v, n.annotation.properties)
+                        for p, v in props.items()])]
 
-class SummarizedTimeFrames(SummarizedNodes):
+
+class TimeFrames(Nodes):
 
     """For now, we take only the TimeFrames that have a frame type, which rules out
     all the frames we got from Kaldi."""
+
+    # TODO: problem here is that this is totally unstructured and gets frames
+    #       from all over the graph
 
     def __init__(self, summary):
         super().__init__(summary)
         for timeframe in self.graph.get_nodes(names.TIME_FRAME):
             if timeframe.has_frame_type():
                 self.add(timeframe)
-
-    def as_xml(self):
-        s = io.StringIO()
-        s.write('  <TimeFrames>\n')
-        for tf in self.nodes:
-            write_tag(s, 'TimeFrame', '    ', tf.summary(), TF_PROPS)
-        s.write('  </TimeFrames>\n')
-        return s.getvalue()
 
     def pp(self):
         print('\nTimeframes -> ')
@@ -253,7 +268,20 @@ class SummarizedTimeFrames(SummarizedNodes):
                                     summary['frameType']))
 
 
-class SummarizedTags(SummarizedNodes):
+class Segments(Nodes):
+
+    def __init__(self, summary):
+        super().__init__(summary)
+        self.summary = summary
+        self.mmif = summary.mmif
+        self.view = get_last_segmenter_view(self.mmif.views)
+        for timeframe in self.summary.timeframes:
+            # TODO: not good at all this code
+            if timeframe.frame_type() in ('speech', 'non-speech'):
+                self.add(timeframe)
+
+
+class Tags(Nodes):
 
     """For now, we take all semantic tags."""
 
@@ -263,7 +291,7 @@ class SummarizedTags(SummarizedNodes):
             self.add(tag)
 
 
-class SummarizedEntities(SummarizedNodes):
+class Entities(Nodes):
 
     """Collecting instances of graph.EntityNode.
 
@@ -320,16 +348,14 @@ class SummarizedEntities(SummarizedNodes):
                 if tag_doc == doc and tag_p1 == p1 and tag_p2 == p2:
                     entity.properties['tag'] = tag.properties['tagName']
 
-    def as_xml(self):
-        s = io.StringIO()
-        s.write('  <Entities>\n')
+    def as_json(self):
+        json_obj = []
         for text in self.nodes_idx:
-            s.write('    <Entity text=%s>\n' % xml_attribute(text))
+            entity = {"text": text, "instances": []}
+            json_obj.append(entity)
             for e in self.nodes_idx[text]:
-                write_tag(s, 'Instance', '      ', e.summary(), E_PROPS)
-            s.write('    </Entity>\n')
-        s.write('  </Entities>\n')
-        return s.getvalue()
+                entity["instances"].append(e.summary()) # e.summary(), E_PROPS)
+        return json_obj
 
     def pp(self):
         print('\nEntities -> ')
@@ -368,7 +394,7 @@ class Bins(object):
             p1 = self.current_bin[-1].start_in_video()
             p2 = entity.start_in_video()
             # p3 = entity.end_in_video()
-            if p2 - p1 < self.summary.granularity:
+            if p2 - p1 < GRANULARITY:
                 # TODO: should add p3 here
                 self.current_bin.add(entity)
             else:
@@ -416,13 +442,29 @@ class Bin(object):
             print(' ', i, node)
 
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(prog='MIFF Summarizer')
+    parser.add_argument('filename')
+    parser.add_argument('--full', action='store_true', help='print full report')
+    parser.add_argument('--views', action='store_true', help='include view metadata')
+    parser.add_argument('--transcript', action='store_true', help='include transcript')
+    parser.add_argument('--barsandtone', action='store_true', help='include bars-and-tone')
+    parser.add_argument('--segments', action='store_true', help='include segments')
+    parser.add_argument('--slate', action='store_true', help='include slate')
+    parser.add_argument('--credits', action='store_true', help='include credits')
+    parser.add_argument('--chyrons', action='store_true', help='include chyrons')
+    parser.add_argument('--entities', action='store_true', help='include entities from transcript')
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
 
-    fname = sys.argv[1]
-    with open(fname) as fh:
+    args = parse_arguments()
+    with open(args.filename) as fh:
         mmif_text = fh.read()
-        mmif_summary = Summary(mmif_text,
-                               granularity=GRANULARITY,
-                               transcript=True,
-                               transcript_mode='sentence')
-        print(mmif_summary.as_xml())
+        mmif_summary = Summary(mmif_text)
+        print(mmif_summary.report(full=args.full, views=args.views,
+                                  transcript=args.transcript, segments=args.segments,
+                                  barsandtone=args.barsandtone, slate=args.slate,
+                                  credits=args.credits, chyrons=args.chyrons,
+                                  entities=args.entities))

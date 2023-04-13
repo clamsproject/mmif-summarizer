@@ -1,13 +1,13 @@
 """Summarizer Application
 
-Application that wraps the sumarizer in summary.py.
+CLAMS Consumer application that wraps the summarizer in summary.py.
 
 To start a Flask server and ping it:
 
-$ python run.py
+$ python app.py
 $ curl -X GET http://0.0.0.0:5000/
 $ curl -X POST -d@examples/input-v7.mmif http://0.0.0.0:5000/
-$ curl -X POST -d@examples/input-v9.mmif http://0.0.0.0:5000/
+$ curl -X POST -d@examples/input-v9.mmif 'http://0.0.0.0:5000?transcript&segments'
 
 See README.md for more details.
 
@@ -20,10 +20,10 @@ from lapps.discriminators import Uri
 
 import summary
 from server import ClamsConsumer, Restifier
-from config import GRANULARITY_HELP, TRANSCRIPT_HELP
 
 
 VERSION = '0.2.0'
+LICENSE = 'Apache 2.0'
 MMIF_VERSION = '0.4.2'
 MMIF_PYTHON_VERSION = '0.4.8'
 CLAMS_PYTHON_VERSION = '0.5.3'
@@ -40,23 +40,21 @@ class MmifSummarizer(ClamsConsumer):
                 description="Summarize a MMIF file.",
                 mmif_version=MMIF_VERSION,
                 app_version=VERSION,
-                app_license='Apache 2.0',
-                analyzer_version=summary.VERSION,
-                analyzer_license=summary.LICENSE)
+                app_license=LICENSE,
+                analyzer_version=VERSION,
+                analyzer_license=LICENSE)
         self.metadata.add_input(DocumentTypes.TextDocument, required=False)
         self.metadata.add_input(AnnotationTypes.TimeFrame, required=False)
         self.metadata.add_input(AnnotationTypes.BoundingBox, required=False)
         self.metadata.add_input(AnnotationTypes.Alignment, required=False)
         self.metadata.add_input(Uri.TOKEN, required=False)
         self.metadata.add_input(Uri.NE, required=False)
-        self.metadata.add_parameter('granularity', GRANULARITY_HELP, 'integer')
-        self.metadata.add_parameter('transcript', TRANSCRIPT_HELP, 'boolean')
         return self.metadata
 
     def _consume(self, mmif, **kwargs):
         self.mmif = mmif if type(mmif) is Mmif else Mmif(mmif)
-        mmif_summary = summary.Summary(mmif, **kwargs)
-        return mmif_summary.as_xml()
+        mmif_summary = summary.Summary(mmif)
+        return mmif_summary.report(**kwargs)
 
 
 def start_service():

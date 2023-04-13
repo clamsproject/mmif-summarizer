@@ -1,6 +1,8 @@
 
-# The name of the Kaldi app, used to select views
+# The name of CLAMS applications, used to select views
 KALDI = 'http://apps.clams.ai/kaldi/'
+WHISPER = 'http://apps.clams.ai/whisper/'
+SEGMENTER = 'http://apps.clams.ai/audio-segmenter'
 
 # Bounding boxes have a time point, but what we are looking for below is to find
 # a start and an end in the video so we manufacture an end point. Set to 1000ms
@@ -16,13 +18,6 @@ MINIMAL_TIMEFRAME_LENGTH = 1000
 # parameter.
 # TODO: this seems broken
 GRANULARITY = 1000
-GRANULARITY_HELP = 'maximum interval between two entities in the same cluster'
-
-# The transcript is probably the largest part of the summary, but in some cases
-# it is not needed for the user, in which case we can suppress it from being in
-# the output This setting can be changed with the 'transcript' parameter.
-TRANSCRIPT = True
-TRANSCRIPT_HELP = ''
 
 # Properties used for the summary for various tags
 DOC_PROPS = ('id', 'type', 'location')
