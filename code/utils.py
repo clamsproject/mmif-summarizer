@@ -6,8 +6,8 @@ import io
 from xml.sax.saxutils import quoteattr, escape
 from collections import UserList
 
-from config import KALDI, WHISPER, SEGMENTER
-from names import TOKEN, ALIGNMENT, TIME_FRAME
+from .config import KALDI, WHISPER, SEGMENTER
+from .names import TOKEN, ALIGNMENT, TIME_FRAME
 
 
 def compose_id(view_id, anno_id):

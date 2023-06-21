@@ -28,11 +28,11 @@ import io, json, argparse
 from mmif.serialize import Mmif
 from mmif.vocabulary import DocumentTypes
 
-from utils import CharacterList
-from utils import get_last_asr_view, get_last_segmenter_view, get_aligned_tokens
-from graph import Graph
-import names
-from config import GRANULARITY
+from .utils import CharacterList
+from .utils import get_last_asr_view, get_last_segmenter_view, get_aligned_tokens
+from .graph import Graph
+import code.names as names
+from .config import GRANULARITY
 
 
 class SummaryException(Exception):

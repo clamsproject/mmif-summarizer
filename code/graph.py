@@ -3,9 +3,9 @@ from operator import itemgetter
 
 from mmif import Mmif
 
-import names
-from utils import compose_id
-from utils import flatten_paths
+import code.names as names
+from .utils import compose_id
+from .utils import flatten_paths
 
 
 class Graph(object):
