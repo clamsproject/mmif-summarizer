@@ -12,7 +12,7 @@ $ pip install clams-python==0.5.3
 
 ## Usage
 
-Run the summarizer in stand-alone mode on one of the sample input documents and print an XML summary:
+Run the summarizer in stand-alone mode on one of the sample input documents and print a JSON summary:
 
 ```bash
 $ cd code
@@ -75,7 +75,7 @@ $ python summary.py examples/input-v7.mmif --barsandtone
 }
 ```
 
-> Not all options are fully implemented yet. In particular: (1) for slates the tool currently only prints the timeframe, not the information contained in it, (2) chyrons and credits are not implmented, and (3) entities are implmented, but need to be revamped. Also missing are some sanity checks that alert the user to overly complicated MMIF input, for example with many layers of the same kind.
+> Not all options are fully implemented yet. In particular: (1) for slates the tool currently only prints the timeframe, not the information contained in it, (2) chyrons and credits are not implemented, and (3) entities are implemented, but need to be revamped. Also missing are some sanity checks that alert the user to overly complicated MMIF input, for example with many layers of the same kind.
 
 If you want XML output (which tends to be a little bit more compact) you can run `json2xml.py` over the output.
 

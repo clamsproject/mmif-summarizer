@@ -34,6 +34,7 @@ from graph import Graph
 import names
 from config import GRANULARITY
 
+VERSION = '0.1.0'
 
 class SummaryException(Exception):
     pass
