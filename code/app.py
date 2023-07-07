@@ -25,18 +25,24 @@ import summary
 
 class ClamsConsumer(ClamsApp):
 
-    """For the summarizer, partially because like a ClamsProducer it also generates
-    JSON, all the  ClamsConsumer does is add consume and _consume methods. The annotate
-    and _annotate methods are inherited, but tweaked to trivially return the input Mmif."""
+    """For the summarizer, partially because like a ClamsProducer it now also generates
+    JSON, all the  ClamsConsumer does is add consume and _consume methods and tweak the
+    annotate and _annotate methods."""
 
     # TODO: we still may want to add this to clams-python
 
-    def _annotate(self, mmif: Mmif, **runtime_params) -> Mmif:
-        """Since this is a consumer it just bounces the input back."""
-        return mmif
+    def annotate(self, mmif: Mmif, **runtime_params) -> Mmif:
+        """Since this is a consumer we just redirect the annotate method to the consume
+        method. This way we do not need to change the post method on the ClamsHTTPApi
+        instance used by the Restifier."""
+        return self._consume(mmif, **runtime_params)
 
-    def consume(self, mmif, **kwargs) -> str:
-        return self._consume(mmif, **kwargs)
+    def _annotate(self, mmif: Mmif, **runtime_params) -> Mmif:
+        """Will never be used but is needed due to superclass requirements."""
+        pass
+
+    def consume(self, mmif: Mmif, **runtime_params) -> str:
+        return self._consume(mmif, **runtime_params)
 
     @abstractmethod
     def _consume(self, mmif, **kwargs) -> str:
@@ -48,10 +54,10 @@ class MmifSummarizer(ClamsConsumer):
     def _appmetadata(self) -> AppMetadata:
         return metadata.appmetadata()
 
-    def _consume(self, mmif, **kwargs):
+    def _consume(self, mmif, **runtime_params):
         self.mmif = mmif if type(mmif) is Mmif else Mmif(mmif)
         mmif_summary = summary.Summary(mmif)
-        return mmif_summary.report(**kwargs)
+        return mmif_summary.report(**runtime_params)
 
 
 def start_service():
