@@ -13,16 +13,39 @@ See README.md for more details.
 
 """
 
+from abc import abstractmethod
+from clams.app import ClamsApp
+from clams.appmetadata import AppMetadata
+from clams.restify import Restifier
 from mmif.serialize import Mmif
 
 import metadata
 import summary
-from server import ClamsConsumer, Restifier
+
+
+class ClamsConsumer(ClamsApp):
+
+    """For the summarizer, partially because like a ClamsProducer it also generates
+    JSON, all the  ClamsConsumer does is add consume and _consume methods. The annotate
+    and _annotate methods are inherited, but tweaked to trivially return the input Mmif."""
+
+    # TODO: we still may want to add this to clams-python
+
+    def _annotate(self, mmif: Mmif, **runtime_params) -> Mmif:
+        """Since this is a consumer it just bounces the input back."""
+        return mmif
+
+    def consume(self, mmif, **kwargs) -> str:
+        return self._consume(mmif, **kwargs)
+
+    @abstractmethod
+    def _consume(self, mmif, **kwargs) -> str:
+        raise NotImplementedError()
 
 
 class MmifSummarizer(ClamsConsumer):
 
-    def _consumermetadata(self):
+    def _appmetadata(self) -> AppMetadata:
         return metadata.appmetadata()
 
     def _consume(self, mmif, **kwargs):
@@ -33,7 +56,7 @@ class MmifSummarizer(ClamsConsumer):
 
 def start_service():
     summarizer = MmifSummarizer()
-    service = Restifier(summarizer, mimetype='application/xml')
+    service = Restifier(summarizer)
     service.run()
 
 
