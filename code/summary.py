@@ -23,7 +23,7 @@ Run the summarizer on one of the simple example input documents.
 
 """
 
-import io, json, argparse
+import sys, io, json, argparse
 
 from mmif.serialize import Mmif
 from mmif.vocabulary import DocumentTypes
@@ -66,9 +66,9 @@ class Summary(object):
         self.timeframes = TimeFrames(self)
         self.segments = Segments(self)
         self.entities = Entities(self)
+        self.tags = Tags(self)
         self.validate()
         self.print_warnings()
-        #self.graph.pp()
 
     def validate(self):
         if len(self.video_documents()) > 1:
@@ -79,7 +79,7 @@ class Summary(object):
 
     def report(self, views=False, full=False, transcript=False,
                segments=False, barsandtone=False, slate=False, chyrons=False,
-               credits=False, entities=False):
+               credits=False, entities=False, tags=False):
         json_obj = {
             'mmif_version': self.mmif.metadata.mmif,
             'documents': self.documents.data}
@@ -101,6 +101,9 @@ class Summary(object):
             pass
         if entities or full:
             json_obj['entities'] = self.entities.as_json()
+        if tags or full:
+            #print('>>>',self.tags[0])
+            json_obj['tags'] = [n.summary() for n in self.tags]
         return json.dumps(json_obj, indent=2)
 
     def print_warnings(self):
@@ -121,7 +124,7 @@ class Documents(object):
     """Contains a list of document summaries, which are dictionaries with just
     the id, type and location properties."""
 
-    def __init__(self, summary):
+    def __init__(self, summary: Summary):
         self.data = [self.summary(doc) for doc in summary.graph.documents]
 
     def __len__(self):
@@ -151,7 +154,8 @@ class Views(object):
     def summary(view):
         return { 'id': view.id,
                  'app': view.metadata.app,
-                 'timestamp': view.metadata.timestamp }
+                 'timestamp': view.metadata.timestamp,
+                 'annotations': len(view.annotations) }
 
     def pp(self):
         print('\nViews -> ')
@@ -288,7 +292,13 @@ class Tags(Nodes):
 
     def __init__(self, summary):
         super().__init__(summary)
+        tags = {}
         for tag in self.graph.get_nodes(names.SEMANTIC_TAG):
+            #sys.stderr.write(f'{type(tag)} {tag} {tag.annotation}\n')
+            tags[tag.properties['text']] = tag
+        #for t in tags:
+        #    sys.stderr.write(f'{t}\n')
+        for tag in tags.values():
             self.add(tag)
 
 
@@ -454,6 +464,7 @@ def parse_arguments():
     parser.add_argument('--slate', action='store_true', help='include slate')
     parser.add_argument('--credits', action='store_true', help='include credits')
     parser.add_argument('--chyrons', action='store_true', help='include chyrons')
+    parser.add_argument('--tags', action='store_true', help='include semantic tags')
     parser.add_argument('--entities', action='store_true', help='include entities from transcript')
     return parser.parse_args()
 
@@ -468,4 +479,4 @@ if __name__ == '__main__':
                                   transcript=args.transcript, segments=args.segments,
                                   barsandtone=args.barsandtone, slate=args.slate,
                                   credits=args.credits, chyrons=args.chyrons,
-                                  entities=args.entities))
+                                  entities=args.entities, tags=args.tags))

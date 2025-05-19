@@ -1,11 +1,15 @@
 import sys, json
 from operator import itemgetter
+from pathlib import Path
+import argparse
+
+import graphviz
 
 from mmif import Mmif
 
 import names
-from utils import compose_id
-from utils import flatten_paths
+from utils import compose_id, flatten_paths
+from utils import get_shape_and_color, get_view_label, get_label
 
 
 class Graph(object):
@@ -15,6 +19,9 @@ class Graph(object):
     from the alignments and added to the Node.targets property. The goal for the
     graph is to store all useful annotation and to have simple ways to trace nodes
     all the way up to the primary data."""
+
+    # TODO: clarify whether targets and document features are also used for adding
+    # to targets, do we need to distinguish between these?
 
     def __init__(self, mmif):
         self.mmif = mmif if type(mmif) is Mmif else Mmif(mmif)
@@ -80,6 +87,32 @@ class Graph(object):
             fh.write("  %-40s" % node)
             targets = [str(t) for t in node.targets]
             fh.write(' -->  [%s]\n' % ' '.join(targets))
+
+    def graphviz(self, engine='dot', anchor=False,
+                 out='gvout', render=False, format='pdf', view_links=False):
+        dot = graphviz.Digraph(comment=out, engine=engine)
+        dot.node('views', shape='cylinder')
+        for view in self.mmif.views:
+            view_id = view.id.replace('_', '')
+            app = Path(view.metadata.app).parts[-2]
+            view_label = get_view_label(view)
+            dot.node(view_label, shape='box')
+            dot.edge('views', view_label)
+        nodes = list(self.nodes.values())
+        for node in nodes:
+            node_name = node.identifier.replace(':', '_')
+            label = get_label(node)
+            shape, color = get_shape_and_color(node.at_type.shortname)
+            dot.node(node_name, label=label, shape=shape, color=color)
+            if view_links and node.view is not None:
+                dot.edge(node_name, get_view_label(node.view))
+        for node in nodes:
+            node_name = node.identifier.replace(':', '_')
+            for t in node.targets:
+                target_name = t.identifier.replace(':', '_')
+                if (target_name != 'm1' or (target_name == 'm1' and anchor)):
+                    dot.edge(node_name, target_name)
+        dot.render(out, format=format, view=render)
 
 
 class TokenIndex(object):
@@ -212,6 +245,11 @@ class Node(object):
         overriden by sub classes."""
         return { 'id': self.identifier }
 
+    def pp(self):
+        print(self)
+        for target in self.targets:
+            print('   ', target)
+
 
 class TimeFrameNode(Node):
 
@@ -342,6 +380,8 @@ class EntityNode(Node):
 
 class TagNode(Node):
 
+    # TODO: this is very preliminay, and not much beyond a hack
+
     def __str__(self):
         return "<%s %s %s:%s %s '%s'>" \
             % (self.at_type.shortname,
@@ -350,6 +390,17 @@ class TagNode(Node):
                self.properties['end'],
                self.properties['tagName'],
                self.properties['text'])
+
+    def summary(self):
+        sys.stderr.write(f'>>> {self.annotation}\n')
+        return {
+            'id': self.identifier,
+            'tag': self.properties['tagName'],
+            'start': self.properties['start'],
+            'end': self.properties['end'],
+            'text': self.properties['text'],
+            'document': self.annotation.properties['document']
+        }
 
 
 class Nodes(object):
@@ -365,3 +416,43 @@ class Nodes(object):
     def new(cls, graph, view, annotation):
         node_class = cls.node_classes.get(annotation.at_type.shortname, Node)
         return node_class(graph, view, annotation)
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i', help="input file")
+    parser.add_argument('-p', action='store_true', help="Print graph")
+    parser.add_argument('-o', help="output file for graphviz")
+    parser.add_argument('-e', default='dot', help="GraphViz engine to use")
+    parser.add_argument('-a', action='store_true', help='anchor to source')
+    parser.add_argument('-r', action='store_true', help='render graph')
+    parser.add_argument('-v', action='store_true', help='include links to views')
+    parser.add_argument('-f', default='pdf', help='output format')
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+
+    args = parse_arguments()
+    graph = Graph(open(args.i).read())
+    #graph.pp()
+    #graph.nodes['v_7:st12'].pp()
+    #graph.nodes['v_2:s1'].pp()
+    #graph.nodes['v_4:tf1'].pp()
+    if args.p:
+        graph.graphviz(
+            engine=args.e, anchor=args.a, out=args.o, render=args.r,
+            format=args.f, view_links=args.v)
+
+
+'''
+
+Printing some graphs:
+
+uv run graph.py -i examples/input-v7.mmif -e dot -f png -o examples/dot-v7-1-full -p -a -v
+uv run graph.py -i examples/input-v7.mmif -e dot -f png -o examples/dot-v7-2-no-view-links -p -a
+uv run graph.py -i examples/input-v7.mmif -e dot -f png -o examples/dot-v7-3-no-anchor-to-doc -p
+
+uv run graph.py -i examples/input-v9.mmif -e dot -f png -o examples/dot-v8-3-no-anchor-to-doc -p
+
+'''

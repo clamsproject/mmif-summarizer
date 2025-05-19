@@ -114,7 +114,7 @@
             "text": {
 	      "@value": "Hello, this is Jim Lehrer with the NewsHour on PBS. We have exciting news about the tomato & Florida."
             }
-	  }
+	        }
         },
         {
           "@type": "http://mmif.clams.ai/0.4.0/vocabulary/Alignment",

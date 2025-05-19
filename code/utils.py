@@ -3,6 +3,7 @@
 """
 
 import io
+from pathlib import Path
 from xml.sax.saxutils import quoteattr, escape
 from collections import UserList
 
@@ -201,3 +202,67 @@ def find_matching_tokens(tokens, ne):
         if token.properties['end'] == ne_end:
             end_token = token
     return start_token, end_token
+
+
+# Visualization utilities
+
+
+def get_view_label(view):
+    #print(view)
+    view_id = view.id.replace('_', '')
+    app = Path(view.metadata.app).parts[-2]
+    note = f'{len(view.annotations)} annotations'
+    return f'{view_id} {app}\n{note}'
+
+
+def get_label(node):
+    at_type = node.at_type.shortname
+    if at_type == 'VideoDocument':
+        identifier = node.identifier.replace('_', '')
+        location = Path(node.properties['location']).name
+        return f'{identifier} {at_type}\n{location}'
+    view = node.view.id.replace('_', '')
+    if at_type == 'TimeFrame':
+        start = f'{node.properties["start"]}'
+        ftype = f'{node.properties.get("frameType")}'
+        return f'{view} {start} {ftype}' if ftype != 'None' else f'{view} {start}'
+    elif at_type == 'Token':
+        return f'{view}\n{node.properties.get("text")}'
+    elif at_type == 'NamedEntity':
+        return f'{view} [{node.properties.get("text")}]'
+    elif at_type == 'TextDocument':
+        text = node.properties.get('text')['@value']
+        if len(text) > 10:
+            text = f'{text[:10]}...'
+        return f'{view} {at_type}\n{text}'
+    elif at_type in ('NounChunk', 'Sentence'):
+        text = node.properties.get('text')
+        if len(text) > 15:
+            text = f'{text[:15]}...'
+        cat = 'NC' if at_type == 'NounChunk' else 'S'
+        return f'{view} {cat}\n{text}'
+    elif at_type == 'BoundingBox':
+        return f'{view} {str(node.properties.get("timePoint"))}'
+    elif at_type == 'SemanticTag':
+        return f'{view} Tag\n{node.properties.get("tagName")}'
+    print(node, node.properties)
+    return f'{view}\n{node.identifier.replace(":", "_")}'
+
+
+def get_shape_and_color(annotation_type: str):
+    if annotation_type in ('VideoDocument', 'TextDocument'):
+        return 'house', 'black'
+    elif annotation_type in ('BoundingBox',):
+        return 'box', 'darkgreen'
+    elif annotation_type in ('Token', 'Sentence', 'NounChunk', 'NamedEntity'):
+        return 'note', 'darkblue'
+    elif annotation_type in ('TimeFrame',):
+        return 'oval', 'darkred'
+    elif annotation_type in ('TimePoint',):
+        return 'circle', 'darkred'
+    elif annotation_type in ('SemanticTag',):
+        return 'note', 'darkorange'
+    print(f'Warning: no defined shape and color for {annotation_type}, using default')
+    return 'Msquare', 'black'
+
+
