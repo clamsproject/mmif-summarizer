@@ -6,9 +6,11 @@ $ python json2xml.py <summary_file>
 
 """
 
+# TODO: This is very much out of date and may be deprecated
 # TODO: add slate (with contents)
 # TODO: add credits (with contents)
 # TODO: add chyrons (with contents)
+# TODO: add tags
 # TODO: add entities
 
 

@@ -7,8 +7,8 @@ import graphviz
 
 from mmif import Mmif
 
-import names
-from utils import compose_id, flatten_paths
+import config
+from utils import compose_id, flatten_paths, normalize_id
 from utils import get_shape_and_color, get_view_label, get_label
 
 
@@ -16,18 +16,28 @@ class Graph(object):
 
     """Graph implementation for a MMIF document. Each node contains an annotation
     or document. Alignments are stored separately. Edges between nodes are created
-    from the alignments and added to the Node.targets property. The goal for the
-    graph is to store all useful annotation and to have simple ways to trace nodes
-    all the way up to the primary data."""
+    from the alignments and added to the Node.targets property. The first edge added
+    to Node.targets is the document that the Node points to (if there is one).
 
-    # TODO: clarify whether targets and document features are also used for adding
-    # to targets, do we need to distinguish between these?
+    The goal for the graph is to store all useful annotation and to have simple ways
+    to trace nodes all the way up to the primary data."""
 
     def __init__(self, mmif):
         self.mmif = mmif if type(mmif) is Mmif else Mmif(mmif)
         self.documents = []
         self.nodes = {}
         self.alignments = []
+        self._init_nodes()
+        self._init_edges()
+        # Third pass to add links between text elements, in particular from
+        # entities to tokens, adding lists of tokens to entities.
+        tokens = self.get_nodes(config.TOKEN)
+        entities = self.get_nodes(config.NAMED_ENTITY)
+        self.token_idx = TokenIndex(tokens)
+        for e in entities:
+            e.tokens = self.token_idx.get_tokens_for_node(e)
+
+    def _init_nodes(self):
         # The top-level documents are added as nodes, but they are also put in
         # the documents list.
         for doc in self.mmif.documents:
@@ -37,29 +47,26 @@ class Graph(object):
         # them in the graph.
         for view in self.mmif.views:
             for annotation in view.annotations:
-                self.add_node(view, annotation)
+                # TODO: this causes trouble, probably id-lookup-related
+                #normalize_id(view, annotation)
+                if annotation.at_type.shortname == config.ALIGNMENT:
+                    # alignments are not added as nodes, but we do keep them around
+                    self.alignments.append((view, annotation))
+                else:
+                    self.add_node(view, annotation)
+
+    def _init_edges(self):
         # Second pass over the alignments so we create edges.
         for view, alignment in self.alignments:
             self.add_edge(view, alignment)
-        # Third pass to add links between text elements, in particular from
-        # entities to tokens, adding lists of tokens to entities.
-        tokens = self.get_nodes(names.TOKEN)
-        entities = self.get_nodes(names.NAMED_ENTITY)
-        self.token_idx = TokenIndex(tokens)
-        for e in entities:
-            e.tokens = self.token_idx.get_tokens_for_node(e)
 
     def __str__(self):
         return "<Graph nodes=%d>" % len(self.nodes)
 
     def add_node(self, view, annotation):
-        """Add annotations and documents to the graph."""
-        if annotation.at_type.shortname == names.ALIGNMENT:
-            # alignments are not added as nodes, but we do keep them around
-            self.alignments.append((view, annotation))
-        else:
-            node = Nodes.new(self, view, annotation)
-            self.nodes[node.identifier] = node
+        """Add an annotation as a node to the graph."""
+        node = Nodes.new(self, view, annotation)
+        self.nodes[node.identifier] = node
 
     def add_edge(self, view, alignment):
         source_id = compose_id(view.id, alignment.properties['source'])
@@ -67,7 +74,7 @@ class Graph(object):
         source = self.get_node(source_id)
         target = self.get_node(target_id)
         # make sure the direction goes from token or textdoc to annotation
-        if target.annotation.at_type.shortname in (names.TOKEN, names.TEXT_DOCUMENT):
+        if target.annotation.at_type.shortname in (config.TOKEN, config.TEXT_DOCUMENT):
             source, target = target, source
         source.targets.append(target)
 
@@ -117,8 +124,20 @@ class Graph(object):
 
 class TokenIndex(object):
 
+    """
+    The tokens are indexed on the identifier on the TextDocument that they occur
+    in and for each text document we have a list of <offsets, Node> pairs
+
+    {'v_4:td1': [
+        ((0, 5), <__main__.Node object at 0x1039996d0>),
+        ((5, 6), <__main__.Node object at 0x103999850>),
+        ...
+    }
+    """
+
     def __init__(self, tokens):
         self.tokens = {}
+        self.token_count = len(tokens)
         for t in tokens:
             tup = ((t.properties['start'], t.properties['end']), t)
             self.tokens.setdefault(t.document.identifier, []).append(tup)
@@ -128,6 +147,12 @@ class TokenIndex(object):
         # In some cases there are two tokens with identical offset (for example
         # with tokenization from both Kaldi and spaCy, not sure what to do with
         # these, but should probably be more careful on what views to access
+
+    def __len__(self):
+        return self.token_count
+
+    def __str__(self):
+        return f'<TokenIndex on with {len(self)} tokens>'
 
     def get_tokens_for_node(self, node):
         """Return all tokens included in the span of a node."""
@@ -155,21 +180,25 @@ class Node(object):
         self.view = view
         self.annotation = annotation
         self.at_type = annotation.at_type
+        #id1 = self._create_identifier()
+        #id2 = annotation.id
+        #print(id1, id2, self)
+        #self.identifier = annotation.id
         self.identifier = self._create_identifier()
-        # copy the properties to the top-level, where we can edit them
+        # copy the properties to the top-level
         self.properties = json.loads(str(annotation.properties))
+        self.document = self._get_document()
         # The targets property contains a list of annotations or documents that
         # the node content points to. This includes the document the annotation
-        # points to (which is calculated right here) as well as the alignment
-        # from a token or text document to a bounding box or time frame (which
-        # is added later). The document is also stored separately.
-        target = self._get_document()
-        self.targets = [] if target is None else [target]
-        self.document = target
+        # points to as well as the alignment from a token or text document to a
+        # bounding box or time frame (which is added later).
+        # TODO: the above does not seem to be true since there is no evidence of
+        # data from alignments being added.
+        self.targets = [] if self.document is None else [self.document]
 
     def __str__(self):
         anchor = ''
-        if self.at_type.shortname == names.TOKEN:
+        if self.at_type.shortname == config.TOKEN:
             anchor = " %s:%s '%s'" % (self.properties['start'],
                                       self.properties['end'],
                                       self.properties['text'])
@@ -334,10 +363,10 @@ class EntityNode(Node):
         #     print('... [')
         #     for n in path: print('     ', n)
         # print('===', bbtf)
-        if bbtf.at_type.shortname == names.BOUNDING_BOX:
+        if bbtf.at_type.shortname == config.BOUNDING_BOX:
             return {'video-start': bbtf.properties['timePoint'],
                     'coordinates': bbtf.properties['coordinates']}
-        elif bbtf.at_type.shortname == names.TIME_FRAME:
+        elif bbtf.at_type.shortname == config.TIME_FRAME:
             return {'video-start': bbtf.properties['start'],
                     'video-end': bbtf.properties['end']}
 
@@ -359,10 +388,10 @@ class EntityNode(Node):
             #    print('... [')
             #    for n in path: print('     ', n)
             # print('===', bbtf)
-            if bbtf.at_type.shortname == names.BOUNDING_BOX:
+            if bbtf.at_type.shortname == config.BOUNDING_BOX:
                 self._anchor = {'video-start': bbtf.properties['timePoint'],
                                 'coordinates': bbtf.properties['coordinates']}
-            elif bbtf.at_type.shortname == names.TIME_FRAME:
+            elif bbtf.at_type.shortname == config.TIME_FRAME:
                 self._anchor = {'video-start': bbtf.properties['start'],
                                 'video-end': bbtf.properties['end']}
         return self._anchor
@@ -392,7 +421,7 @@ class TagNode(Node):
                self.properties['text'])
 
     def summary(self):
-        sys.stderr.write(f'>>> {self.annotation}\n')
+        #sys.stderr.write(f'>>> {self.annotation}\n')
         return {
             'id': self.identifier,
             'tag': self.properties['tagName'],
@@ -408,9 +437,9 @@ class Nodes(object):
     """Factory class for Node creation. Use Node for creation unless a special
     class was registered for the kind of annotation we have."""
 
-    node_classes = { names.NAMED_ENTITY: EntityNode,
-                     names.SEMANTIC_TAG: TagNode,
-                     names.TIME_FRAME: TimeFrameNode }
+    node_classes = { config.NAMED_ENTITY: EntityNode,
+                     config.SEMANTIC_TAG: TagNode,
+                     config.TIME_FRAME: TimeFrameNode }
 
     @classmethod
     def new(cls, graph, view, annotation):
@@ -449,10 +478,8 @@ if __name__ == '__main__':
 
 Printing some graphs:
 
-uv run graph.py -i examples/input-v7.mmif -e dot -f png -o examples/dot-v7-1-full -p -a -v
-uv run graph.py -i examples/input-v7.mmif -e dot -f png -o examples/dot-v7-2-no-view-links -p -a
-uv run graph.py -i examples/input-v7.mmif -e dot -f png -o examples/dot-v7-3-no-anchor-to-doc -p
-
-uv run graph.py -i examples/input-v9.mmif -e dot -f png -o examples/dot-v8-3-no-anchor-to-doc -p
+uv run graph.py -i examples/input-v9.mmif -e dot -f png -o examples/dot-v9-1-full -p -a -v
+uv run graph.py -i examples/input-v9.mmif -e dot -f png -o examples/dot-v9-2-no-view-links -p -a
+uv run graph.py -i examples/input-v9.mmif -e dot -f png -o examples/dot-v9-3-no-anchor-to-doc -p
 
 '''

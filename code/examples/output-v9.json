@@ -1,0 +1,299 @@
+{
+  "mmif_version": "http://mmif.clams.ai/0.4.0",
+  "documents": [
+    {
+      "id": "m1",
+      "type": "VideoDocument",
+      "location": "file:///var/archive/video-002.mp4"
+    }
+  ],
+  "views": [
+    {
+      "id": "v_1",
+      "app": "http://apps.clams.ai/bars-and-tone/1.0.5",
+      "timestamp": "2020-05-27T12:23:45",
+      "annotations": 1
+    },
+    {
+      "id": "v_2",
+      "app": "http://apps.clams.ai/slates/1.0.3",
+      "timestamp": "2020-05-27T12:23:45",
+      "annotations": 1
+    },
+    {
+      "id": "v_3",
+      "app": "http://apps.clams.ai/audio-segmenter/0.2.1",
+      "timestamp": null,
+      "annotations": 2
+    },
+    {
+      "id": "v_4",
+      "app": "http://apps.clams.ai/kaldi/0.2.1",
+      "timestamp": null,
+      "annotations": 38
+    },
+    {
+      "id": "v_5",
+      "app": "http://apps.clams.ai/east/0.2.1",
+      "timestamp": null,
+      "annotations": 25
+    },
+    {
+      "id": "v_6",
+      "app": "http://apps.clams.ai/tesseract/0.2.1",
+      "timestamp": null,
+      "annotations": 50
+    },
+    {
+      "id": "v_7",
+      "app": "http://apps.clams.ai/slate-parser/1.0.2",
+      "timestamp": "2020-05-27T12:23:45",
+      "annotations": 12
+    },
+    {
+      "id": "v_8",
+      "app": "https://apps.clams.ai/spacy_nlp/0.0.1",
+      "timestamp": "2021-07-23T13:36:21.845035",
+      "annotations": 19
+    },
+    {
+      "id": "v_9",
+      "app": "https://apps.clams.ai/spacy_nlp/0.0.1",
+      "timestamp": "2021-07-23T13:36:21.854547",
+      "annotations": 110
+    }
+  ],
+  "transcript": [
+    [
+      "Hello, this is Jim Lehrer with the NewsHour on PBS.",
+      5500,
+      11467
+    ]
+  ],
+  "bars-and-tone": [
+    {
+      "id": "v_1:s1",
+      "start": 0,
+      "end": 2600,
+      "frameType": "bars-and-tone"
+    }
+  ],
+  "slate": [
+    {
+      "id": "v_2:s1",
+      "start": 2700,
+      "end": 5300,
+      "frameType": "slate"
+    }
+  ],
+  "segments": [
+    {
+      "id": "v_3:tf1",
+      "start": 0,
+      "end": 5500,
+      "frameType": "non-speech"
+    },
+    {
+      "id": "v_3:tf2",
+      "start": 5500,
+      "end": 22000,
+      "frameType": "speech"
+    }
+  ],
+  "tags": [
+    {
+      "id": "v_7:st9",
+      "tag": "Date",
+      "start": 0,
+      "end": 10,
+      "text": "1982-05-12",
+      "document": "v_6:td18"
+    },
+    {
+      "id": "v_7:st10",
+      "tag": "Title",
+      "start": 0,
+      "end": 9,
+      "text": "Loud Dogs",
+      "document": "v_6:td20"
+    },
+    {
+      "id": "v_7:st11",
+      "tag": "Host",
+      "start": 0,
+      "end": 10,
+      "text": "Jim Lehrer",
+      "document": "v_6:td22"
+    },
+    {
+      "id": "v_7:st12",
+      "tag": "Producer",
+      "start": 0,
+      "end": 9,
+      "text": "Sara Just",
+      "document": "v_6:td24"
+    }
+  ],
+  "entities": [
+    {
+      "text": "Jim Lehrer",
+      "instances": [
+        {
+          "id": "v_9:ne12",
+          "group": 0,
+          "cat": "PERSON",
+          "tag": null,
+          "document": "v_6:td6:0:10",
+          "video-start": 3500,
+          "video-end": null,
+          "coordinates": "660:520,1200:520,660:580,1200:580"
+        },
+        {
+          "id": "v_9:ne18",
+          "group": 0,
+          "cat": "PERSON",
+          "tag": null,
+          "document": "v_6:td14:0:10",
+          "video-start": 4000,
+          "video-end": null,
+          "coordinates": "660:520,1200:520,660:580,1200:580"
+        },
+        {
+          "id": "v_9:ne24",
+          "group": 1,
+          "cat": "PERSON",
+          "tag": "Host",
+          "document": "v_6:td22:0:10",
+          "video-start": 5000,
+          "video-end": null,
+          "coordinates": "660:520,1200:520,660:580,1200:580"
+        },
+        {
+          "id": "v_8:ne2",
+          "group": 1,
+          "cat": "PERSON",
+          "tag": null,
+          "document": "v_4:td1:15:25",
+          "video-start": 5500,
+          "video-end": 22000,
+          "coordinates": null
+        }
+      ]
+    },
+    {
+      "text": "NewsHour",
+      "instances": [
+        {
+          "id": "v_8:ne4",
+          "group": 0,
+          "cat": "PRODUCT",
+          "tag": null,
+          "document": "v_4:td1:35:43",
+          "video-start": 5500,
+          "video-end": 22000,
+          "coordinates": null
+        }
+      ]
+    },
+    {
+      "text": "PBS",
+      "instances": [
+        {
+          "id": "v_8:ne6",
+          "group": 0,
+          "cat": "ORG",
+          "tag": null,
+          "document": "v_4:td1:47:50",
+          "video-start": 5500,
+          "video-end": 22000,
+          "coordinates": null
+        }
+      ]
+    },
+    {
+      "text": "1982-05-12",
+      "instances": [
+        {
+          "id": "v_9:ne8",
+          "group": 0,
+          "cat": "DATE",
+          "tag": null,
+          "document": "v_6:td2:0:10",
+          "video-start": 3500,
+          "video-end": null,
+          "coordinates": "660:110,1250:110,660:170,1250:170"
+        },
+        {
+          "id": "v_9:ne14",
+          "group": 0,
+          "cat": "DATE",
+          "tag": null,
+          "document": "v_6:td10:0:10",
+          "video-start": 4000,
+          "video-end": null,
+          "coordinates": "660:110,1250:110,660:170,1250:170"
+        },
+        {
+          "id": "v_9:ne20",
+          "group": 1,
+          "cat": "DATE",
+          "tag": "Date",
+          "document": "v_6:td18:0:10",
+          "video-start": 5000,
+          "video-end": null,
+          "coordinates": "660:110,1250:110,660:170,1250:170"
+        }
+      ]
+    },
+    {
+      "text": "HOST",
+      "instances": [
+        {
+          "id": "v_9:ne10",
+          "group": 0,
+          "cat": "ORG",
+          "tag": null,
+          "document": "v_6:td5:0:4",
+          "video-start": 3500,
+          "video-end": null,
+          "coordinates": "180:520,460:520,180:580,460:580"
+        },
+        {
+          "id": "v_9:ne16",
+          "group": 0,
+          "cat": "ORG",
+          "tag": null,
+          "document": "v_6:td13:0:4",
+          "video-start": 4000,
+          "video-end": null,
+          "coordinates": "180:520,460:520,180:580,460:580"
+        },
+        {
+          "id": "v_9:ne22",
+          "group": 1,
+          "cat": "ORG",
+          "tag": null,
+          "document": "v_6:td21:0:4",
+          "video-start": 5000,
+          "video-end": null,
+          "coordinates": "180:520,460:520,180:580,460:580"
+        }
+      ]
+    },
+    {
+      "text": "New York",
+      "instances": [
+        {
+          "id": "v_9:ne26",
+          "group": 0,
+          "cat": "GPE",
+          "tag": null,
+          "document": "v_6:td25:7:15",
+          "video-start": 21000,
+          "video-end": null,
+          "coordinates": "150:810,1120:810,150:870,1120:870"
+        }
+      ]
+    }
+  ]
+}

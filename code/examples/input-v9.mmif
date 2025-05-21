@@ -2,6 +2,7 @@
   "metadata": {
     "mmif": "http://mmif.clams.ai/0.4.0"
   },
+
   "documents": [
     {
       "@type": "http://mmif.clams.ai/0.4.0/vocabulary/VideoDocument",
@@ -12,7 +13,9 @@
       }
     }
   ],
+
   "views": [
+
     {
       "id": "v_1",
       "metadata": {
@@ -37,6 +40,7 @@
         }
       ]
     },
+
     {
       "id": "v_2",
       "metadata": {
@@ -61,6 +65,7 @@
         }
       ]
     },
+
     {
       "id": "v_3",
       "metadata": {
@@ -93,6 +98,7 @@
         }
       ]
     },
+
     {
       "id": "v_4",
       "metadata": {
@@ -429,6 +435,7 @@
         }
       ]
     },
+
     {
       "id": "v_5",
       "metadata": {
@@ -1093,6 +1100,7 @@
         }
       ]
     },
+
     {
       "id": "v_6",
       "metadata": {
@@ -1530,6 +1538,7 @@
         }
       ]
     },
+
     {
       "id": "v_7",
       "metadata": {
@@ -1674,11 +1683,12 @@
         }
       ]
     },
+
     {
       "id": "v_8",
       "metadata": {
         "timestamp": "2021-07-23T13:36:21.845035",
-        "app": "https://apps.clams.ai/spacy_nlp",
+        "app": "https://apps.clams.ai/spacy_nlp/0.0.1",
         "contains": {
           "http://vocab.lappsgrid.org/Token": {},
           "http://vocab.lappsgrid.org/Token#pos": {},
@@ -1908,11 +1918,12 @@
         }
       ]
     },
+
     {
       "id": "v_9",
       "metadata": {
         "timestamp": "2021-07-23T13:36:21.854547",
-        "app": "https://apps.clams.ai/spacy_nlp",
+        "app": "https://apps.clams.ai/spacy_nlp/0.0.1",
         "contains": {
           "http://vocab.lappsgrid.org/Token": {},
           "http://vocab.lappsgrid.org/Token#pos": {},

@@ -8,7 +8,7 @@ from xml.sax.saxutils import quoteattr, escape
 from collections import UserList
 
 from config import KALDI, WHISPER, SEGMENTER
-from names import TOKEN, ALIGNMENT, TIME_FRAME
+from config import TOKEN, ALIGNMENT, TIME_FRAME
 
 
 def compose_id(view_id, anno_id):
@@ -181,6 +181,16 @@ def print_path(p):
         print(p, end=' ')
 
 
+def normalize_id(view: 'View', annotation: 'Annotation'):
+    """Change the identifier to include the view identifier if it wasn't included,
+    do nothing otherwise."""
+    # TODO: should set the identifier, this is still being debugged
+    newid = ''
+    if ':' not in annotation.id and view is not None:
+        newid = f'{view.id}:{annotation.id}'
+    print(annotation.id, newid, annotation.at_type)
+
+
 def get_annotations_from_view(view, annotation_type):
     """Return all annotations from a view that match the short name of the
     annotation type."""
@@ -224,12 +234,14 @@ def get_label(node):
     view = node.view.id.replace('_', '')
     if at_type == 'TimeFrame':
         start = f'{node.properties["start"]}'
+        end = f'{node.properties["end"]}'
+        label = f'{view} TF\n{start}-{end}'
         ftype = f'{node.properties.get("frameType")}'
-        return f'{view} {start} {ftype}' if ftype != 'None' else f'{view} {start}'
+        return f'{label} {ftype}' if ftype != 'None' else f'{label}'
     elif at_type == 'Token':
         return f'{view}\n{node.properties.get("text")}'
     elif at_type == 'NamedEntity':
-        return f'{view} [{node.properties.get("text")}]'
+        return f'{view} NE\n{node.properties.get("text")}'
     elif at_type == 'TextDocument':
         text = node.properties.get('text')['@value']
         if len(text) > 10:
@@ -242,7 +254,7 @@ def get_label(node):
         cat = 'NC' if at_type == 'NounChunk' else 'S'
         return f'{view} {cat}\n{text}'
     elif at_type == 'BoundingBox':
-        return f'{view} {str(node.properties.get("timePoint"))}'
+        return f'{view} BB\n{str(node.properties.get("timePoint"))}'
     elif at_type == 'SemanticTag':
         return f'{view} Tag\n{node.properties.get("tagName")}'
     print(node, node.properties)
@@ -254,13 +266,13 @@ def get_shape_and_color(annotation_type: str):
         return 'house', 'black'
     elif annotation_type in ('BoundingBox',):
         return 'box', 'darkgreen'
-    elif annotation_type in ('Token', 'Sentence', 'NounChunk', 'NamedEntity'):
+    elif annotation_type in ('Token', 'Sentence', 'NounChunk'):
         return 'note', 'darkblue'
     elif annotation_type in ('TimeFrame',):
         return 'oval', 'darkred'
     elif annotation_type in ('TimePoint',):
         return 'circle', 'darkred'
-    elif annotation_type in ('SemanticTag',):
+    elif annotation_type in ('SemanticTag', 'NamedEntity'):
         return 'note', 'darkorange'
     print(f'Warning: no defined shape and color for {annotation_type}, using default')
     return 'Msquare', 'black'

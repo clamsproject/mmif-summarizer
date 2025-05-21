@@ -31,10 +31,16 @@ from mmif.vocabulary import DocumentTypes
 from utils import CharacterList
 from utils import get_last_asr_view, get_last_segmenter_view, get_aligned_tokens
 from graph import Graph
-import names
-from config import GRANULARITY
+import config
+
 
 VERSION = '0.1.0'
+
+
+def debug(*texts):
+    for text in texts:
+        sys.stderr.write(f'{text}\n')
+
 
 class SummaryException(Exception):
     pass
@@ -99,11 +105,10 @@ class Summary(object):
             pass
         if credits or full:
             pass
+        if tags or full:
+            json_obj['tags'] = [n.summary() for n in self.tags]
         if entities or full:
             json_obj['entities'] = self.entities.as_json()
-        if tags or full:
-            #print('>>>',self.tags[0])
-            json_obj['tags'] = [n.summary() for n in self.tags]
         return json.dumps(json_obj, indent=2)
 
     def print_warnings(self):
@@ -261,7 +266,7 @@ class TimeFrames(Nodes):
 
     def __init__(self, summary):
         super().__init__(summary)
-        for timeframe in self.graph.get_nodes(names.TIME_FRAME):
+        for timeframe in self.graph.get_nodes(config.TIME_FRAME):
             if timeframe.has_frame_type():
                 self.add(timeframe)
 
@@ -293,7 +298,7 @@ class Tags(Nodes):
     def __init__(self, summary):
         super().__init__(summary)
         tags = {}
-        for tag in self.graph.get_nodes(names.SEMANTIC_TAG):
+        for tag in self.graph.get_nodes(config.SEMANTIC_TAG):
             #sys.stderr.write(f'{type(tag)} {tag} {tag.annotation}\n')
             tags[tag.properties['text']] = tag
         #for t in tags:
@@ -316,11 +321,14 @@ class Entities(Nodes):
         super().__init__(summary)
         self.nodes_idx = {}
         self.bins = None
-        for ent in self.graph.get_nodes(names.NAMED_ENTITY):
+        for ent in self.graph.get_nodes(config.NAMED_ENTITY):
             self.add(ent)
         self._create_node_index()
         self._group()
         self._add_tags(summary.tags)
+
+    def __str__(self):
+        return f'<Entities with {len(self.nodes_idx)} nodes and {len(self.bins)} bins>'
 
     def _create_node_index(self):
         """Put all the entities from self.nodes in self.node_idx. This first puts
@@ -351,7 +359,6 @@ class Entities(Nodes):
             tag_p2 = tag.properties['end']
             entities = self.nodes_idx.get(tag.properties['text'], [])
             for entity in entities:
-                # props = list(entity.properties.keys())
                 props = entity.properties
                 doc = props['document']
                 p1 = props['start']
@@ -391,6 +398,12 @@ class Bins(object):
         self.current_bin = None
         self.current_text = None
 
+    def __str__(self):
+        return f'<Bins {len(self.bins)}>'
+
+    def __len__(self):
+        return len(self.bins)
+
     def add_entity(self, text, entity):
         """Add an entity instance to the appropriate bin."""
         if self.current_bin is None:
@@ -405,7 +418,7 @@ class Bins(object):
             p1 = self.current_bin[-1].start_in_video()
             p2 = entity.start_in_video()
             # p3 = entity.end_in_video()
-            if p2 - p1 < GRANULARITY:
+            if p2 - p1 < config.GRANULARITY:
                 # TODO: should add p3 here
                 self.current_bin.add(entity)
             else:
