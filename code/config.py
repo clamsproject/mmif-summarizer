@@ -1,3 +1,4 @@
+
 from mmif.vocabulary import DocumentTypes
 from mmif.vocabulary import AnnotationTypes
 
@@ -36,7 +37,7 @@ TF_PROPS = ('id', 'start', 'end', 'frameType')
 E_PROPS = ('id', 'group', 'cat', 'tag', 'video-start', 'video-end', 'coordinates')
 
 
-# Names of types.
+# Names of types
 
 TEXT_DOCUMENT = DocumentTypes.TextDocument.shortname
 VIDEO_DOCUMENT = DocumentTypes.VideoDocument.shortname
@@ -47,3 +48,20 @@ ALIGNMENT = AnnotationTypes.Alignment.shortname
 TOKEN = 'Token'
 SEMANTIC_TAG = 'SemanticTag'
 NAMED_ENTITY = 'NamedEntity'
+
+
+# Shape and color settings for the nodes in the graph visualization
+
+GRAPH_FORMATTING = {
+	'VideoDocument': ('house', 'black'),
+	'TextDocument': ('house', 'black'),
+	'BoundingBox': ('box', 'darkgreen'),
+    'Token': ('note', 'darkblue'),
+    'Sentence': ('note', 'darkblue'),
+    'NounChunk': ('note', 'darkblue'),
+    'TimeFrame': ('oval', 'darkred'),
+    'TimePoint': ('circle', 'darkred'),
+    'SemanticTag': ('note', 'darkorange'),
+    'NamedEntity': ('note', 'darkorange'),
+    None: ('Msquare', 'black')
+}

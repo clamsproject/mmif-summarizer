@@ -3,3 +3,17 @@
 __pycache__
 .idea
 venv
+*.mmif
+
+# Personal scratch files and output files
+backup.sh
+code/test.sh
+code/examples/v9
+code/examples/dot-*
+code/dot-out*
+
+# Some uv-related files that we are not using (yet?)
+/main.py
+/.python-version
+/pyproject.toml
+/uv.lock

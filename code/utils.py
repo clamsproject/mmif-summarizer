@@ -9,6 +9,7 @@ from collections import UserList
 
 from config import KALDI, WHISPER, SEGMENTER
 from config import TOKEN, ALIGNMENT, TIME_FRAME
+from config import GRAPH_FORMATTING
 
 
 def compose_id(view_id, anno_id):
@@ -225,56 +226,52 @@ def get_view_label(view):
     return f'{view_id} {app}\n{note}'
 
 
-def get_label(node):
-    at_type = node.at_type.shortname
+def get_label(view: 'mmif.View', annotation: 'mmif.Annotation'):
+    at_type = annotation.at_type.shortname
     if at_type == 'VideoDocument':
-        identifier = node.identifier.replace('_', '')
-        location = Path(node.properties['location']).name
+        identifier = annotation.id.replace('_', '')
+        location = Path(annotation.properties.location).name
         return f'{identifier} {at_type}\n{location}'
-    view = node.view.id.replace('_', '')
+    view_id = view.id.replace('_', '')
     if at_type == 'TimeFrame':
-        start = f'{node.properties["start"]}'
-        end = f'{node.properties["end"]}'
-        label = f'{view} TF\n{start}-{end}'
-        ftype = f'{node.properties.get("frameType")}'
+        if 'start' in annotation.properties and 'end' in annotation.properties:
+            start = f'{annotation.properties["start"]}'
+            end = f'{annotation.properties["end"]}'
+            label = f'{view_id} TF\n{start}-{end}'
+        elif 'targets' in annotation.properties:
+            start = annotation.properties['targets'][0]
+            end = annotation.properties['targets'][-1]
+            label = f'{view_id} TF\n{start}-{end}'
+        else:
+            label = 'NONE'
+        ftype = f'{annotation.properties.get("frameType")}'
         return f'{label} {ftype}' if ftype != 'None' else f'{label}'
     elif at_type == 'Token':
-        return f'{view}\n{node.properties.get("text")}'
+        return f'{view_id}\n{annotation.properties.get("text")}'
     elif at_type == 'NamedEntity':
-        return f'{view} NE\n{node.properties.get("text")}'
+        return f'{view_id} NE\n{annotation.properties.get("text")}'
     elif at_type == 'TextDocument':
-        text = node.properties.get('text')['@value']
-        if len(text) > 10:
-            text = f'{text[:10]}...'
-        return f'{view} {at_type}\n{text}'
+        text = annotation.properties.text.value
+        if len(text) > 100:
+            text = f'{text[:100]}...'
+        return f'{view_id} {at_type}\n{text}'
     elif at_type in ('NounChunk', 'Sentence'):
-        text = node.properties.get('text')
+        text = annotation.properties.get('text')
         if len(text) > 15:
             text = f'{text[:15]}...'
         cat = 'NC' if at_type == 'NounChunk' else 'S'
-        return f'{view} {cat}\n{text}'
+        return f'{view_id} {cat}\n{text}'
     elif at_type == 'BoundingBox':
-        return f'{view} BB\n{str(node.properties.get("timePoint"))}'
+        return f'{view_id} BB\n{str(annotation.properties.get("timePoint"))}'
     elif at_type == 'SemanticTag':
-        return f'{view} Tag\n{node.properties.get("tagName")}'
-    print(node, node.properties)
-    return f'{view}\n{node.identifier.replace(":", "_")}'
+        return f'{view_id} Tag\n{annotation.properties.get("tagName")}'
+    print(annotation, annotation.properties)
+    return f'{view_id}\n{annotation.id.replace(":", "_")}'
 
 
 def get_shape_and_color(annotation_type: str):
-    if annotation_type in ('VideoDocument', 'TextDocument'):
-        return 'house', 'black'
-    elif annotation_type in ('BoundingBox',):
-        return 'box', 'darkgreen'
-    elif annotation_type in ('Token', 'Sentence', 'NounChunk'):
-        return 'note', 'darkblue'
-    elif annotation_type in ('TimeFrame',):
-        return 'oval', 'darkred'
-    elif annotation_type in ('TimePoint',):
-        return 'circle', 'darkred'
-    elif annotation_type in ('SemanticTag', 'NamedEntity'):
-        return 'note', 'darkorange'
-    print(f'Warning: no defined shape and color for {annotation_type}, using default')
-    return 'Msquare', 'black'
-
-
+    node_format = GRAPH_FORMATTING.get(annotation_type)
+    if node_format is None:
+        print(f'Warning: no defined shape and color for {annotation_type}, using default')
+        node_format = GRAPH_FORMATTING.get(None)
+    return node_format

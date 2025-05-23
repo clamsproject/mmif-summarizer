@@ -95,32 +95,6 @@ class Graph(object):
             targets = [str(t) for t in node.targets]
             fh.write(' -->  [%s]\n' % ' '.join(targets))
 
-    def graphviz(self, engine='dot', anchor=False,
-                 out='gvout', render=False, format='pdf', view_links=False):
-        dot = graphviz.Digraph(comment=out, engine=engine)
-        dot.node('views', shape='cylinder')
-        for view in self.mmif.views:
-            view_id = view.id.replace('_', '')
-            app = Path(view.metadata.app).parts[-2]
-            view_label = get_view_label(view)
-            dot.node(view_label, shape='box')
-            dot.edge('views', view_label)
-        nodes = list(self.nodes.values())
-        for node in nodes:
-            node_name = node.identifier.replace(':', '_')
-            label = get_label(node)
-            shape, color = get_shape_and_color(node.at_type.shortname)
-            dot.node(node_name, label=label, shape=shape, color=color)
-            if view_links and node.view is not None:
-                dot.edge(node_name, get_view_label(node.view))
-        for node in nodes:
-            node_name = node.identifier.replace(':', '_')
-            for t in node.targets:
-                target_name = t.identifier.replace(':', '_')
-                if (target_name != 'm1' or (target_name == 'm1' and anchor)):
-                    dot.edge(node_name, target_name)
-        dot.render(out, format=format, view=render)
-
 
 class TokenIndex(object):
 
@@ -288,10 +262,10 @@ class TimeFrameNode(Node):
                 % (self.identifier, self.start(), self.end(), frame_type))
 
     def start(self):
-        return self.properties['start']
+        return self.properties.get('start', -1)
 
     def end(self):
-        return self.properties['end']
+        return self.properties.get('end', -1)
 
     def frame_type(self):
         return self.properties.get('frameType')
@@ -447,31 +421,14 @@ class Nodes(object):
         return node_class(graph, view, annotation)
 
 
-def parse_arguments():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-i', help="input file")
-    parser.add_argument('-p', action='store_true', help="Print graph")
-    parser.add_argument('-o', help="output file for graphviz")
-    parser.add_argument('-e', default='dot', help="GraphViz engine to use")
-    parser.add_argument('-a', action='store_true', help='anchor to source')
-    parser.add_argument('-r', action='store_true', help='render graph')
-    parser.add_argument('-v', action='store_true', help='include links to views')
-    parser.add_argument('-f', default='pdf', help='output format')
-    return parser.parse_args()
-
 
 if __name__ == '__main__':
 
-    args = parse_arguments()
-    graph = Graph(open(args.i).read())
-    #graph.pp()
+    graph = Graph(open(sys.argv[1]).read())
+    graph.pp()
     #graph.nodes['v_7:st12'].pp()
     #graph.nodes['v_2:s1'].pp()
     #graph.nodes['v_4:tf1'].pp()
-    if args.p:
-        graph.graphviz(
-            engine=args.e, anchor=args.a, out=args.o, render=args.r,
-            format=args.f, view_links=args.v)
 
 
 '''

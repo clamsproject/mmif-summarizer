@@ -1,17 +1,48 @@
 """
 
-Visualize the JSON file that was created by the summarizer or visualize a raw
-MMIF file, only printing explicit links between annotations.
+Visualize the JSON file that was created by the summarizer or visualize a MMIF
+file, both the raw MMIF and the Graph created from it.
 
-Visualize summary:
-
-    $ python visualize.py -s examples/output-v9.json examples/dot-v9
-
-    This creates a couple of files, all starting with examples/dot-v9
+This visualization is not so much meant for end users, but more for debugging
+the graph and summarization code.
 
 Visualize MMIF:
 
-    $ python visualize.py -m examples/input-v9.mmif examples/dot-v9-0-mmif
+    $ python visualize.py --mmif -i examples/input-v9.mmif -o examples/dot-v9
+
+    Creates files 
+
+        examples/dot-v9.graph
+        examples/dot-v9.graph.pdf
+        examples/dot-v9.graph.png
+        examples/dot-v9.mmif
+        examples/dot-v9.mmif.pdf
+        examples/dot-v9.mmif.png
+
+Visualize summary:
+
+    $ python visualize.py --summary -i examples/output-v9.json -o examples/dot-v9
+
+    Creates files 
+
+        examples/dot-v9.summary.ents
+        examples/dot-v9.summary.ents.pdf
+        examples/dot-v9.summary.ents.png
+        examples/dot-v9.summary.tags
+        examples/dot-v9.summary.tags.pdf
+        examples/dot-v9.summary.tags.png
+        examples/dot-v9.summary.tfs
+        examples/dot-v9.summary.tfs.pdf
+        examples/dot-v9.summary.tfs.png
+        examples/dot-v9.summary.trans
+        examples/dot-v9.summary.trans.pdf
+        examples/dot-v9.summary.trans.png
+        examples/dot-v9.summary.views
+        examples/dot-v9.summary.views.pdf
+        examples/dot-v9.summary.views.png
+
+If you use the commands as above you can load the file "examples/dot-v9.html" in
+your browser to view the PNG images.
 
 """
 
@@ -19,27 +50,82 @@ import sys
 import json
 import pathlib
 import collections
+import argparse
 
 import graphviz
+
 from mmif import Mmif
-from utils import get_shape_and_color
+from graph import Graph
+from utils import get_shape_and_color, get_view_label, get_label
 
-
-FORMAT = 'png'
 
 FRAME_TYPES = ['bars-and-tone', 'slate', 'segments']
 
 
-def visualize_summary(fname: str, basename: str):
+# Visualizing the MMIF file and the Graph created from it
+
+def visualize_mmif(mmif: Mmif, out: str):
+    """Visualize the explicit links in the MMIF file."""
+    # TODO: this is not working as it should probably due to lack of
+    # standardization in the identifiers, will fix this after taking
+    # a good look at the graph and summarizer code.
+    dot = graphviz.Digraph(comment=out)
+    alignments = []
+    for view in mmif.views:
+        for anno in view.annotations:
+            identifier = f'{view.id} {anno.id}'
+            if anno.at_type.shortname == 'Alignment':
+                alignments.append((view.id, anno))
+            else:
+                shape, color = get_shape_and_color(anno.at_type.shortname)
+                label = get_label(view, anno)
+                dot.node(identifier, shape=shape, color=color, label=label)
+    for view_id, alignment in alignments:
+        identifier = f'{view_id} {alignment.id}'
+        source = alignment.properties['source'].replace(':', ' ')
+        target = alignment.properties['target']
+        if ' ' not in source:
+            source = f'{view_id} {source}'
+        if ' ' not in target:
+            target = f'{view_id} {target}'
+        dot.node(identifier, shape='diamond')
+        dot.edge(identifier, source)
+        dot.edge(identifier, target)
+    dot.render(out, format='pdf')
+    dot.render(out, format='png')
+
+
+def visualize_graph(graph: Graph, out: str):
+    dot = graphviz.Digraph(comment=out)
+    nodes = list(graph.nodes.values())
+    for node in nodes:
+        node_name = node.identifier.replace(':', '_')
+        label = get_label(node.view, node.annotation)
+        shape, color = get_shape_and_color(node.at_type.shortname)
+        dot.node(node_name, label=label, shape=shape, color=color)
+    for node in nodes:
+        node_name = node.identifier.replace(':', '_')
+        for t in node.targets:
+            target_name = t.identifier.replace(':', '_')
+            # TODO: this should not depend on a specific identifier
+            if (target_name != 'm1'):
+                dot.edge(node_name, target_name)
+    dot.render(out, format='pdf')
+    dot.render(out, format='png')
+
+
+# Visualizing the summary
+
+def visualize_summary(fname: str, out: str):
     """Visualize the summary in file 'fname' by creating a set of graphs all
-    starting with 'basename'."""
+    starting with 'out'."""
     summary = json.load(open(fname))
     print(summary.keys())
-    _visualize_views(summary.get('views', []), basename + '.summary.views')
-    _visualize_transcript(summary.get('transcript', []), basename + '.summary.trans')
-    _visualize_timeframes(summary, basename + '.summary.tfs')
-    _visualize_tags(summary.get('tags', []), basename + '.summary.tags')
-    _visualize_entities(summary.get('entities', []), basename + '.summary.ents')
+    _visualize_views(summary.get('views', []), out + '.summary.views')
+    _visualize_transcript(summary.get('transcript', []), out + '.summary.trans')
+    _visualize_timeframes(summary, out + '.summary.tfs')
+    _visualize_tags(summary.get('tags', []), out + '.summary.tags')
+    _visualize_entities(summary.get('entities', []), out + '.summary.ents')
 
 
 def _visualize_views(views: list, fname: str):
@@ -52,7 +138,8 @@ def _visualize_views(views: list, fname: str):
         dot.node(view_label, shape='box')
         dot.edge('views', view_label)
     print(f'Wrinting {fname}')
-    dot.render(fname, format=FORMAT)
+    dot.render(fname, format='pdf')
+    dot.render(fname, format='png')
 
 
 def _visualize_transcript(transcript: list, fname):
@@ -70,7 +157,8 @@ def _visualize_transcript(transcript: list, fname):
             dot.edge('transcript', f'line-s{n}')
             dot.edge(f'line-s{n}', f'pos-s{n}')
     print(f'Wrinting {fname}')
-    dot.render(fname, format=FORMAT)
+    dot.render(fname, format='pdf')
+    dot.render(fname, format='png')
 
 
 table = '''<<table cellspacing="0" cellpadding="5" border="0">
@@ -104,7 +192,8 @@ def _visualize_timeframes(summary: dict, fname: str):
             dot.node(identifier, label=f'{label}', color="darkred")
             dot.edge(frame_type, identifier)
     print(f'Wrinting {fname}')
-    dot.render(fname, format=FORMAT)
+    dot.render(fname, format='pdf')
+    dot.render(fname, format='png')
 
 
 def _visualize_tags(tags: list, fname: str):
@@ -122,7 +211,8 @@ def _visualize_tags(tags: list, fname: str):
         dot.node(tag_name + 'bb', label='3500', color='darkgreen', shape='box')
         dot.edge(tag_text, tag_name + 'bb')
     print(f'Wrinting {fname}')
-    dot.render(fname, format=FORMAT)
+    dot.render(fname, format='pdf')
+    dot.render(fname, format='png')
 
 
 def _visualize_entities(entities: list, fname: str):
@@ -148,8 +238,11 @@ def _visualize_entities(entities: list, fname: str):
             dot.node(group_id, label=label, color='darkred')
             dot.edge(etext, group_id)
     print(f'Wrinting {fname}')
-    dot.render(fname, format=FORMAT)
+    dot.render(fname, format='pdf')
+    dot.render(fname, format='png')
 
+
+# Utilities
 
 def group_instances(instances: list):
     d = collections.defaultdict(list)
@@ -158,81 +251,53 @@ def group_instances(instances: list):
     return d
 
 
-def visualize_mmif(mmif_file: str, image_file: str):
-    """Visualize the explicit links in the MMIF file."""
-    # TODO: this is not working as it should probably due to lack of
-    # standardization in the identifiers, will fix this after taking
-    # a good look at the graph and summarizer code.
+def create_argument_parser():
+    h_mmif = "visualize a MMIF file, both the raw file and the underlying graph"
+    h_summary = "visualize the summary of a MMIF file"
+    h_input = "input file, either a MMIF file or a summary"
+    h_output = "output directory for graphviz files (default='.')"
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mmif', action="store_true", help=h_mmif)
+    parser.add_argument('--summary', action="store_true", help=h_summary)
+    parser.add_argument('-i', metavar='FILE', help=h_input)
+    parser.add_argument('-o', metavar='PATH', help=h_output, default='.')
+    return parser
+
+
+def doctr_example(mmif_file: str):
     mmif = Mmif(open(mmif_file).read())
     dot = graphviz.Digraph(comment=mmif_file)
-    alignments = []
-    for view in mmif.views:
-        for anno in view.annotations:
-            identifier = f'{view.id} {anno.id}'
-            if anno.at_type.shortname == 'Alignment':
-                alignments.append((view.id, anno))
-            else:
-                shape, color = get_shape_and_color(anno.at_type.shortname)
-                label = f'{view.id.replace("_","")} {get_label(anno)}'
-                dot.node(identifier, shape=shape, color=color, label=label)
-    for view_id, alignment in alignments:
-        identifier = f'{view_id} {alignment.id}'
-        source = alignment.properties['source'].replace(':', ' ')
-        target = alignment.properties['target']
-        if ' ' not in source:
-            source = f'{view_id} {source}'
-        if ' ' not in target:
-            target = f'{view_id} {target}'
-        dot.node(identifier, shape='diamond')
-        dot.edge(identifier, source)
-        dot.edge(identifier, target)
-    dot.render(image_file, format=FORMAT)
+    graph = Graph(mmif)
+    print(graph)
+    visualize_graph(graph)
 
-
-def get_label(anno):
-    # This is slightly different from the one in utils since that one works
-    # on a Node instead of on an Annotation.
-    identifier = anno.id.replace(':', ' ')
-    at_type = anno.at_type.shortname
-    if at_type == 'VideoDocument':
-        identifier = anno.identifier.replace('_', '')
-        location = Path(anno.properties['location']).name
-        return f'{identifier} {at_type}\n{location}'
-    if at_type == 'TimeFrame':
-        start = f'{anno.properties["start"]}'
-        ftype = f'{anno.properties.get("frameType")}'
-        return f'{identifier}\n{start} {ftype}' if ftype != 'None' else f'{identifier}\n{start}'
-    elif at_type == 'Token':
-        return f'{identifier}\n{anno.properties.get("text")}'
-    elif at_type == 'NamedEntity':
-        return f'{identifier}\n[{anno.properties.get("text")}]'
-    elif at_type == 'TextDocument':
-        text = anno.properties.get('text').value
-        if len(text) > 10:
-            text = f'{text[:10]}...'
-        return f'{identifier} {at_type}\n{text}'
-    elif at_type in ('NounChunk', 'Sentence'):
-        text = anno.properties.get('text')
-        if len(text) > 15:
-            text = f'{text[:15]}...'
-        cat = 'NC' if at_type == 'NounChunk' else 'S'
-        return f'{identifier} {cat}\n{text}'
-    elif at_type == 'BoundingBox':
-        return f'{identifier}\n{str(anno.properties.get("timePoint"))}'
-    elif at_type == 'SemanticTag':
-        return f'{identifier} Tag\n{anno.properties.get("tagName")}'
-    return f'{identifier}\n{anno.identifier.replace(":", "_")}'
 
 
 if __name__ == '__main__':
 
-    if sys.argv[1] == '-s':
-        visualize_summary(sys.argv[2], sys.argv[3])
-    elif sys.argv[1] == '-m':
-        visualize_mmif(sys.argv[2], sys.argv[3])
+    parser = create_argument_parser()
+    args = parser.parse_args()
+    if not args.mmif and not args.summary:
+        print('\nWARNING: you must either use the --mmif or the --summary option\n')
+        parser.print_help()
+        exit()
+
+    if args.mmif:
+        mmif = Mmif(open(args.i).read())
+        graph = Graph(mmif)
+        print(graph)
+        visualize_mmif(mmif, f'{args.o}.mmif')
+        visualize_graph(graph, f'{args.o}.graph')
+
+    if args.summary:
+        visualize_summary(args.i, args.o)
+
+    #doctr_example(sys.argv[1])
 
 
 '''
-uv run visualize.py -s examples/output-v7.json
-uv run visualize.py -m examples/input-v7.mmif
+
+uv run visualize.py --mmif -i examples/input-v9.mmif -o examples/dot-v9
+uv run visualize.py --summary -i examples/output-v9.json -o examples/dot-v9
+
 '''

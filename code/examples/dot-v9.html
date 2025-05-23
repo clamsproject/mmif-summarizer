@@ -1,0 +1,69 @@
+<html>
+
+<head>
+
+<style>
+button{
+	font-size: 18;
+}
+img {
+	padding: 8px;
+	border: 1px solid #555;
+}
+</style>
+
+<script type="text/javascript">
+function show(val) {
+  for (div of document.getElementsByTagName('div')) {
+	div.style.display = "none";
+  }
+  for (button of document.getElementsByTagName('button')) {
+  	button.style.fontWeight = 'normal';
+  	button.style.color = "#000000";
+  }
+  document.getElementById(val).style.display = "block";
+  document.getElementById("b-" + val).style.color = "darkblue";
+  document.getElementById("b-" + val).style.fontWeight = "800";
+}
+</script>
+
+</head>
+
+<body>
+
+<button id="b-mmif" onclick="show('mmif')">MMIF</button>
+<button id="b-graph" onclick="show('graph')">Graph</button>
+<button id="b-summary" onclick="show('summary')">Summary</button>
+
+<div id="mmif" style="display: block;">
+	<h3>dot-v9-mmif</h3>
+	<img src="dot-v9.mmif.png">
+</div>
+
+<div id="graph" style="display: block;">
+	<h3>dot-v9-graph</h3>
+	<img src="dot-v9.graph.png">
+</div>
+
+<div id="summary" style="display: none;">
+	<h3>dot-v9-4-summary</h3>
+	<p><img src="dot-v9.summary.views.png"></p>
+	<p><img src="dot-v9.summary.trans.png"></p>
+	<p><img src="dot-v9.summary.tfs.png"></p>
+	<p><img src="dot-v9.summary.tags.png"></p>
+	<p><img src="dot-v9.summary.ents.png"></p>
+</div>
+
+
+</body>
+
+<script>
+var button = document.getElementById("b-graph");
+button.style.color = "darkblue";
+button.style.fontWeight = "800";
+show("graph")
+</script>
+
+</html>
+
+
