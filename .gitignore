@@ -10,6 +10,7 @@ backup.sh
 code/test.sh
 code/examples/v9
 code/examples/dot-*
+code/examples/pipelines
 code/dot-out*
 
 # Some uv-related files that we are not using (yet?)
