@@ -23,7 +23,7 @@ Visualize summary:
 
     $ python visualize.py --summary -i examples/output-v9.json -o examples/dot-v9
 
-    Creates files 
+    Creates files
 
         examples/dot-v9.summary.ents
         examples/dot-v9.summary.ents.pdf
@@ -43,6 +43,8 @@ Visualize summary:
 
 If you use the commands as above you can load the file "examples/dot-v9.html" in
 your browser to view the PNG images.
+
+TODO: the file "examples/dot-v9.html" should be created from a template
 
 """
 
@@ -73,7 +75,7 @@ def visualize_mmif(mmif: Mmif, out: str):
     alignments = []
     for view in mmif.views:
         for anno in view.annotations:
-            identifier = f'{view.id} {anno.id}'
+            identifier = anno.id.replace(':', ' ')
             if anno.at_type.shortname == 'Alignment':
                 alignments.append((view.id, anno))
             else:
@@ -81,13 +83,9 @@ def visualize_mmif(mmif: Mmif, out: str):
                 label = get_label(view, anno)
                 dot.node(identifier, shape=shape, color=color, label=label)
     for view_id, alignment in alignments:
-        identifier = f'{view_id} {alignment.id}'
+        identifier = alignment.id.replace(':', ' ')
         source = alignment.properties['source'].replace(':', ' ')
-        target = alignment.properties['target']
-        if ' ' not in source:
-            source = f'{view_id} {source}'
-        if ' ' not in target:
-            target = f'{view_id} {target}'
+        target = alignment.properties['target'].replace(':', ' ')
         dot.node(identifier, shape='diamond')
         dot.edge(identifier, source)
         dot.edge(identifier, target)
@@ -102,7 +100,8 @@ def visualize_graph(graph: Graph, out: str):
         node_name = node.identifier.replace(':', '_')
         label = get_label(node.view, node.annotation)
         shape, color = get_shape_and_color(node.at_type.shortname)
-        dot.node(node_name, label=label, shape=shape, color=color)
+        style = 'bold' if node.view is None else None
+        dot.node(node_name, label=label, shape=shape, color=color, style=style)
     for node in nodes:
         node_name = node.identifier.replace(':', '_')
         for t in node.targets:
@@ -126,6 +125,7 @@ def visualize_summary(fname: str, out: str):
     _visualize_timeframes(summary, out + '.summary.tfs')
     _visualize_tags(summary.get('tags', []), out + '.summary.tags')
     _visualize_entities(summary.get('entities', []), out + '.summary.ents')
+    _visualize_caption(summary.get('captions', []), out + '.summary.caps')
 
 
 def _visualize_views(views: list, fname: str):
@@ -133,11 +133,14 @@ def _visualize_views(views: list, fname: str):
     dot.node('views', shape='cylinder')
     for view in views:
         view_id = view['id'].replace('_', '')
+        print(view)
         app = pathlib.Path(view['app']).parts[-2]
+        #app = pathlib.Path(view['metadata']['app']).parts[-2]
         view_label = f'{view_id} {app}\n{view["annotations"]} annotations'
+        print('>>>', app, view_label)
         dot.node(view_label, shape='box')
         dot.edge('views', view_label)
-    print(f'Wrinting {fname}')
+    print(f'Writing {fname}')
     dot.render(fname, format='pdf')
     dot.render(fname, format='png')
 
@@ -156,42 +159,22 @@ def _visualize_transcript(transcript: list, fname):
             dot.node(f'pos-s{n}', label=f'{p1}-{p2}', color='darkred')
             dot.edge('transcript', f'line-s{n}')
             dot.edge(f'line-s{n}', f'pos-s{n}')
-    print(f'Wrinting {fname}')
+    print(f'Writing {fname}')
     dot.render(fname, format='pdf')
     dot.render(fname, format='png')
-
-
-table = '''<<table cellspacing="0" cellpadding="5" border="0">
-<tr>
-  <td>s1</td>
-  <td align="right">5500</td>
-  <td align="right">11467</td>
-  <td align="left">
-    Hello, this is Jim Lehrer with the NewsHour on PBS.
-  </td>
-</tr>
-<tr>
-  <td>s2</td>
-  <td align="right">12380</td>
-  <td align="right">22098</td>
-  <td align="left">
-    Today, we are talking about the increasing problem with barking dogs in New York.
-  </td>
-</tr>
-</table>>
-'''
 
 
 def _visualize_timeframes(summary: dict, fname: str):
     dot = graphviz.Digraph(comment=fname)
     for frame_type in FRAME_TYPES:
         dot.node(frame_type, shape='cylinder')
+        #print(summary)
         for tf in summary[frame_type]:
             identifier = tf['id'].replace(':', '|')
             label = f'{tf["frameType"]}\n{tf["start"]}-{tf["end"]} '
             dot.node(identifier, label=f'{label}', color="darkred")
             dot.edge(frame_type, identifier)
-    print(f'Wrinting {fname}')
+    print(f'Writing {fname}')
     dot.render(fname, format='pdf')
     dot.render(fname, format='png')
 
@@ -210,7 +193,7 @@ def _visualize_tags(tags: list, fname: str):
         dot.edge(tag_name, tag_text)
         dot.node(tag_name + 'bb', label='3500', color='darkgreen', shape='box')
         dot.edge(tag_text, tag_name + 'bb')
-    print(f'Wrinting {fname}')
+    print(f'Writing {fname}')
     dot.render(fname, format='pdf')
     dot.render(fname, format='png')
 
@@ -237,12 +220,63 @@ def _visualize_entities(entities: list, fname: str):
                 label = f'{tps[0]}-{tps[-1]}'
             dot.node(group_id, label=label, color='darkred')
             dot.edge(etext, group_id)
-    print(f'Wrinting {fname}')
+    print(f'Writing {fname}')
+    dot.render(fname, format='pdf')
+    dot.render(fname, format='png')
+
+
+
+t = '''<<table cellspacing="0" cellpadding="5" border="0">
+<tr>
+  <td>s1</td>
+  <td align="right">5500</td>
+  <td align="right">11467</td>
+  <td align="left">
+    Hello, this is Jim Lehrer with the NewsHour on PBS.
+  </td>
+</tr>
+<tr>
+  <td>s2</td>
+  <td align="right">12380</td>
+  <td align="right">22098</td>
+  <td align="left">
+    Today, we are talking about the increasing problem with barking dogs in New York.
+  </td>
+</tr>
+</table>>
+'''
+
+def _visualize_caption(captions: list, fname: str):
+    dot = graphviz.Digraph(comment=fname)
+    dot.node('Captions', shape='cylinder')
+    tab = '''<<table cellspacing="0" cellpadding="5" border="0">\n'''
+    for _, p1, p2, text in captions:
+        h, m, s, ms = convert_milliseconds(p1)
+        timestamp = f'{m:02d}:{s:02d}.{ms:04d}'
+        timestamp = f'{m:02d}:{s:02d}'
+        s = f'<tr>\n  <td align="right">{timestamp}</td>\n  <td align="right">chyron</td>\n  <td align="left">{text}</td>\n</tr>\n'
+        s = s.strip().strip("`")
+        tab = tab + s
+        dot.node(f'text-{p1}-{p2}', label=f'{text.strip()}', shape='box', color='darkblue')
+        dot.node(f'tf-{p1}-{p2}', label=f'chyron\n{timestamp}', shape='oval', color='darkred')
+        #dot.node(f'tf-{p1}-{p2}', label=f'chyron\n{p1}-{p2}', shape='oval', color='darkred')
+        dot.edge('Captions', f'text-{p1}-{p2}')
+        dot.edge(f'text-{p1}-{p2}', f'tf-{p1}-{p2}')
+    tab = tab + '\n</table>>'
+    print(f'Writing {fname}')
     dot.render(fname, format='pdf')
     dot.render(fname, format='png')
 
 
 # Utilities
+
+
+def convert_milliseconds(t: int):
+    milliseconds = int(t) % 1000
+    seconds = int(t/1000) % 60
+    minutes = int(t/(1000 * 60)) % 60
+    hours = int(t/(1000 * 60 * 60)) %24
+    return hours, minutes, seconds, milliseconds
 
 def group_instances(instances: list):
     d = collections.defaultdict(list)
@@ -253,11 +287,13 @@ def group_instances(instances: list):
 
 def create_argument_parser():
     h_mmif = "visualize a MMIF file, both the raw file and the underlying graph"
+    h_graph = "visualize the underlying graph of a MMIF file"
     h_summary = "visualize the summary of a MMIF file"
     h_input = "input file, either a MMIF file or a summary"
     h_output = "output directory for graphviz files (default='.')"
     parser = argparse.ArgumentParser()
     parser.add_argument('--mmif', action="store_true", help=h_mmif)
+    parser.add_argument('--graph', action="store_true", help=h_mmif)
     parser.add_argument('--summary', action="store_true", help=h_summary)
     parser.add_argument('-i', metavar='FILE', help=h_input)
     parser.add_argument('-o', metavar='PATH', help=h_output, default='.')
@@ -277,17 +313,22 @@ if __name__ == '__main__':
 
     parser = create_argument_parser()
     args = parser.parse_args()
-    if not args.mmif and not args.summary:
-        print('\nWARNING: you must either use the --mmif or the --summary option\n')
+    if not args.mmif and not args.graph and not args.summary:
+        print('\nWARNING: you must use one of the --mmif, --graph or --summary options\n')
         parser.print_help()
         exit()
 
-    if args.mmif:
+
+    if args.graph or args.mmif:
         mmif = Mmif(open(args.i).read())
-        graph = Graph(mmif)
-        print(graph)
-        visualize_mmif(mmif, f'{args.o}.mmif')
-        visualize_graph(graph, f'{args.o}.graph')
+        if args.graph:
+            graph = Graph(mmif)
+            visualize_graph(graph, f'{args.o}.graph')
+        if args.mmif:
+            mmif = Mmif(open(args.i).read())
+            graph = Graph(mmif)
+            #graph.trim(0, 10000)
+            visualize_mmif(mmif, f'{args.o}.mmif')
 
     if args.summary:
         visualize_summary(args.i, args.o)

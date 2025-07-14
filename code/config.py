@@ -5,8 +5,16 @@ from mmif.vocabulary import AnnotationTypes
 
 # The name of CLAMS applications, used to select views
 
-KALDI = 'http://apps.clams.ai/kaldi/'
-WHISPER = 'http://apps.clams.ai/whisper/'
+KALDI = [
+    'http://apps.clams.ai/aapb-pua-kaldi-wrapper/0.2.2',
+    'http://apps.clams.ai/aapb-pua-kaldi-wrapper/0.2.3']
+
+WHISPER = [
+    'http://apps.clams.ai/whisper-wrapper/v8']
+
+CAPTIONER = [
+    'http://apps.clams.ai/llava-captioner/v1.2-6-gc824c97']
+
 SEGMENTER = 'http://apps.clams.ai/audio-segmenter'
 
 
@@ -46,6 +54,7 @@ BOUNDING_BOX = AnnotationTypes.BoundingBox.shortname
 ALIGNMENT = AnnotationTypes.Alignment.shortname
 
 TOKEN = 'Token'
+SENTENCE = 'Sentence'
 SEMANTIC_TAG = 'SemanticTag'
 NAMED_ENTITY = 'NamedEntity'
 
@@ -53,8 +62,8 @@ NAMED_ENTITY = 'NamedEntity'
 # Shape and color settings for the nodes in the graph visualization
 
 GRAPH_FORMATTING = {
-	'VideoDocument': ('house', 'black'),
-	'TextDocument': ('house', 'black'),
+	'VideoDocument': ('component', 'black'),
+	'TextDocument': ('component', 'darkblue'),
 	'BoundingBox': ('box', 'darkgreen'),
     'Token': ('note', 'darkblue'),
     'Sentence': ('note', 'darkblue'),

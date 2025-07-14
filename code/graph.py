@@ -1,4 +1,5 @@
 import sys, json
+from collections import defaultdict
 from operator import itemgetter
 from pathlib import Path
 import argparse
@@ -45,10 +46,10 @@ class Graph(object):
             self.documents.append(doc)
         # First pass over all annotations and documents in all views and save
         # them in the graph.
+        doc_ids = [d.id for d in self.documents]
         for view in self.mmif.views:
             for annotation in view.annotations:
-                # TODO: this causes trouble, probably id-lookup-related
-                #normalize_id(view, annotation)
+                normalize_id(doc_ids, view, annotation)
                 if annotation.at_type.shortname == config.ALIGNMENT:
                     # alignments are not added as nodes, but we do keep them around
                     self.alignments.append((view, annotation))
@@ -69,21 +70,52 @@ class Graph(object):
         self.nodes[node.identifier] = node
 
     def add_edge(self, view, alignment):
-        source_id = compose_id(view.id, alignment.properties['source'])
-        target_id = compose_id(view.id, alignment.properties['target'])
+        source_id = alignment.properties['source']
+        target_id = alignment.properties['target']
+        #print(alignment.id, source_id, target_id)
         source = self.get_node(source_id)
         target = self.get_node(target_id)
         # make sure the direction goes from token or textdoc to annotation
         if target.annotation.at_type.shortname in (config.TOKEN, config.TEXT_DOCUMENT):
             source, target = target, source
         source.targets.append(target)
+        #if target_id == "v_3:td_1":
+        #    source.set_alignment_anchors(target, debug=True)
+        source.set_alignment_anchors(target)
+        target.set_alignment_anchors(source)
 
     def get_node(self, node_id):
         return self.nodes.get(node_id)
 
-    def get_nodes(self, short_at_type):
+    def get_nodes(self, short_at_type: str, view_id : str = None):
+        """Get all nodes for an annotation type, using the short form. If a view
+        identifier is provided then only include nodes from that view."""
         return [node for node in self.nodes.values()
-                if node.at_type.shortname == short_at_type]
+                if (node.at_type.shortname == short_at_type
+                    and (view_id is None or node.view.id == view_id))]
+
+    def statistics(self):
+        stats = defaultdict(int)
+        for node in self.nodes.values():
+            stats[node.at_type.shortname] += 1
+        return stats
+
+    def trim(self, start: int, end: int):
+        """Trim the graph and keep only those nodes that are included in graph
+        between two timepoints (both in milliseconds). This assumes that all nodes
+        are anchored on the time in the audio or video stream. At the moment it 
+        keeps all nodes that are not explicitly anchored."""
+        remove = set()
+        for node_id, node in self.nodes.items():
+            if 'time-point' in node.anchors:
+                if not start <= node.anchors['time-point'] <= end:
+                    remove.add(node_id)
+            if 'time-offsets' in node.anchors:
+                p1, p2 = node.anchors['time-offsets']
+                if not (start <= p1 <= end and start <= p2 <= end):
+                    remove.add(node_id)
+        new_nodes = [n for n in self.nodes.values() if not n.identifier in remove]
+        self.nodes = { node.identifier: node for node in new_nodes }
 
     def pp(self, fname=None):
         fh = sys.stdout if fname is None else open(fname, 'w')
@@ -128,6 +160,10 @@ class TokenIndex(object):
     def __str__(self):
         return f'<TokenIndex on with {len(self)} tokens>'
 
+    # TODO: benchmark this method. I may want to use something like this to 
+    # determine encloced nodes and enclosing nodes and that may blow up since
+    # that would be O(n^2). If it does matter, probably start using binary
+    # search or add an index from character offset to nodes.
     def get_tokens_for_node(self, node):
         """Return all tokens included in the span of a node."""
         doc = node.document.identifier
@@ -153,14 +189,11 @@ class Node(object):
         self.graph = graph
         self.view = view
         self.annotation = annotation
+        # copy some information from the Annotation
         self.at_type = annotation.at_type
-        #id1 = self._create_identifier()
-        #id2 = annotation.id
-        #print(id1, id2, self)
-        #self.identifier = annotation.id
-        self.identifier = self._create_identifier()
-        # copy the properties to the top-level
+        self.identifier = annotation.id
         self.properties = json.loads(str(annotation.properties))
+        # get the document from the view or the properties
         self.document = self._get_document()
         # The targets property contains a list of annotations or documents that
         # the node content points to. This includes the document the annotation
@@ -169,28 +202,94 @@ class Node(object):
         # TODO: the above does not seem to be true since there is no evidence of
         # data from alignments being added.
         self.targets = [] if self.document is None else [self.document]
+        self.set_local_anchors()
+
+    def set_local_anchors(self):
+        """Set the anchors that you can get from the annotation itself, which 
+        includes the start and end offsets, the coordinates and the timePoint of
+        a BoundingBox."""
+        # TODO: start/end in time frames now does the wrong thing
+        # TODO: should probably be overridden on subtypes
+        props = self.properties
+        attype = self.annotation.at_type.shortname
+        self.anchors = {}
+        if 'start' in props and 'end' in props:
+            self.anchors['text-offsets'] = (props['start'], props['end'])
+        if 'coordinates' in props:
+            self.anchors['coordinates'] = props['coordinates']
+        if 'timePoint' in props:
+            self.anchors['time-point'] = props['timePoint']
+        if 'targets' in props:
+            # TODO: this is a placeholder, should get the targets and
+            # find start/end properties
+            self.anchors['targets'] = props['targets']
+        if attype == 'TimeFrame' and "targets" in props:
+            tp1 = self.graph.nodes[props['targets'][0]]
+            tp2 = self.graph.nodes[props['targets'][-1]]
+            self.anchors['time-offsets'] = (
+                tp1.properties['timePoint'], tp2.properties['timePoint'])
+        if not self.anchors and not attype.endswith('Document'):
+            if attype != 'Annotation':
+                print('set_local_anchors', attype, self, self.properties.keys())
+
+    def set_alignment_anchors(self, target: None, debug=False):
+        source_attype = self.at_type.shortname
+        target_attype = target.at_type.shortname
+        if debug:
+            print('DEBUG', source_attype, target_attype)
+            print('DEBUG', self.annotation)
+            print('DEBUG', target.annotation)
+            print('DEBUG', target.anchors)
+        # If a TextDocument is aligned to a BoundingBox then we grab the coordinates
+        # TODO: how are we getting the time point?
+        if source_attype == 'TextDocument' and target_attype == 'BoundingBox':
+            if 'coordinates' in target.properties:
+                self.anchors['coordinates'] = target.properties['coordinates']
+            #print(source_attype, self.anchors)
+        elif source_attype == 'BoundingBox' and target_attype == 'TextDocument':
+            pass
+        # If a TextDocument is aligned to a TimeFrame then we copy time anchors
+        # but also targets and representatives, the latter because some alignments
+        # are not precise
+        elif source_attype == 'TextDocument' and target_attype == 'TimeFrame':
+            if 'start' in target.properties and 'end' in target.properties:
+                self.anchors['time-offsets'] = (target.properties['start'],
+                                                target.properties['end'])
+            if 'time-offsets' in target.anchors:
+                # TODO: is this ever used?
+                self.anchors['time-offsets'] = target.anchors['time-offsets']
+            if 'targets' in target.properties:
+                self.anchors['targets'] = target.properties['targets']
+            if 'representatives' in target.properties:
+                self.anchors['representatives'] = target.properties['representatives']
+            #print('-', source_attype, self.anchors, self, target)
+        elif source_attype == 'TimeFrame' and target_attype == 'TextDocument':
+            pass
+        # For Token-TimeFrame alignments all we need are the start and end time points
+        elif source_attype == 'Token' and target_attype == 'TimeFrame':
+            if 'start' in target.properties and 'end' in target.properties:
+                self.anchors['time-offsets'] = (target.properties['start'],
+                                                target.properties['end'])
+            #print(source_attype, self.anchors)
+        elif source_attype == 'TimeFrame' and target_attype == 'Token':
+            pass
+        # TODO: check whether some action is needed for the next two
+        elif source_attype == 'TextDocument' and target_attype == 'VideoDocument':
+            pass
+        elif source_attype == 'VideoDocument' and target_attype == 'TextDocument':
+            pass
+        else:
+            print('-', attype1, target_attype)
+        if debug:
+            print('>>>', self.anchors)
 
     def __str__(self):
         anchor = ''
         if self.at_type.shortname == config.TOKEN:
             anchor = " %s:%s '%s'" % (self.properties['start'],
                                       self.properties['end'],
-                                      self.properties['text'])
+                                      self.properties.get('text'))
         return "<%s %s%s>" % (self.at_type.shortname, self.identifier, anchor)
-
-    def _get_view_id(self):
-        """Return the view identifier of the annotation, this will be None when
-        the Node was created from an element of the MMIF document list."""
-        return None if self.view is None else self.view.id
-
-    def _create_identifier(self):
-        """Create a composite identifier view_id:annotation_id. If the Node was
-        created for an element of the document list just return the document
-        identifier."""
-        # TODO: what if the annotation_id already had the view_id prepended?
-        view_id = self._get_view_id()
-        anno_id = self.annotation.properties['id']
-        return anno_id if view_id is None else "%s:%s" % (view_id, anno_id)
 
     def _get_document(self):
         """Return the document or annotation node that the annotation/document in
@@ -200,7 +299,7 @@ class Node(object):
         # try the local property
         docid = self.properties.get('document')
         if docid is not None:
-            docid = self._adjust_identifier(docid)
+            #docid = self.XXX_adjust_identifier(docid)
             # print('>>>', docid, self.graph.get_node(docid))
             return self.graph.get_node(docid)
         # try the metadata property
@@ -208,7 +307,7 @@ class Node(object):
             try:
                 metadata = self.view.metadata.contains[self.at_type]
                 docid = metadata['document']
-                docid = self._adjust_identifier(docid)
+                #docid = self.XXX_adjust_identifier(docid)
                 return self.graph.get_node(docid)
             except KeyError:
                 return None
@@ -219,7 +318,7 @@ class Node(object):
         return "%s:%s:%s" % (self.document.identifier,
                              props['start'], props['end'])
 
-    def _adjust_identifier(self, docid):
+    def XXX_adjust_identifier(self, docid):
         """Compose the identifier if needed."""
         if docid is None:
             return None
@@ -249,7 +348,7 @@ class Node(object):
         return { 'id': self.identifier }
 
     def pp(self):
-        print(self)
+        print(self, self.properties)
         for target in self.targets:
             print('   ', target)
 
@@ -257,7 +356,7 @@ class Node(object):
 class TimeFrameNode(Node):
 
     def __str__(self):
-        frame_type = ' ' + self.frame_type() if self.has_frame_type() else ''
+        frame_type = ' ' + self.frame_type() if self.has_label() else ''
         return ('<TimeFrameNode %s %s:%s%s>'
                 % (self.identifier, self.start(), self.end(), frame_type))
 
@@ -268,10 +367,19 @@ class TimeFrameNode(Node):
         return self.properties.get('end', -1)
 
     def frame_type(self):
-        return self.properties.get('frameType')
+        # TODO: rename this, uses old property since replaced by "label""
+        # NOTE: this is still aloowing for the old property though
+        return self.properties.get('label') or self.properties.get('frameType')
 
-    def has_frame_type(self):
+    def has_label(self):
         return self.frame_type() is not None
+
+    def representatives(self) -> list:
+        """Return a list of the representative TimePoints."""
+        # TODO: why could I not get this from the anchors?
+        rep_ids = self.properties.get('representatives', [])
+        reps = [self.graph.get_node(rep_id) for rep_id in rep_ids]
+        return reps
 
     def summary(self):
         """The summary of a time frame just contains the identifier, start, end
@@ -425,10 +533,14 @@ class Nodes(object):
 if __name__ == '__main__':
 
     graph = Graph(open(sys.argv[1]).read())
-    graph.pp()
+    print(graph)
+    #graph.pp()
     #graph.nodes['v_7:st12'].pp()
     #graph.nodes['v_2:s1'].pp()
     #graph.nodes['v_4:tf1'].pp()
+    exit()
+    for node in graph.nodes.values():
+        print(node.at_type.shortname, node.identifier, node.anchors)
 
 
 '''

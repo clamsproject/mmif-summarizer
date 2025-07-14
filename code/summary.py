@@ -2,34 +2,98 @@
 
 MMIF consumer that creates a JSON summary from a MMIF file.
 
-Makes some simplifying assumptions, some of them need to be revisited:
-
-- The transcript is taken from the last ASR view.
+Makes some simplifying assumptions, including:
 
 - There is one video in the MMIF documents list. All start and end properties
   are pointing to that video.
+- The time unit is assumed to be milliseconds. 
 
-- The time unit is assumed to be milliseconds. Should really update get_start()
-  and get_end() and other methods.
+Other assumptions are listed with the options below.
 
-- Makes no distinction between named entities found in the slate and those found
-  in OCR elsewhere or via Kaldi.
 
 USAGE:
 
-$ python summary.py [OPTIONS] examples/input-v7.mmif
+    $ python summary.py [OPTIONS] 
 
-Run the summarizer on one of the simple example input documents.
+    Reads the MMIF file and creates a JSON summary file with the document list
+    and any requested extra information.
+
+Example:
+
+    $ python summary -i input.mmif -o output.json --views --transcript
+
+    Reads input.mmif and creates output.json with just views and transcript
+    information added to the documents list.
+
+
+OPTIONS:
+
+-d DIRECTORY
+
+Run the summarizer over all MMIF files in the directory, input files are assumed to 
+have the .mmif extension and output files will be written in the same directpry with
+the .json extension.
+
+-i INFILE and -o OUTFILE
+
+MMIF file to read and JSON summary file to write to.
+
+--views
+
+Shows basic information from the views: identifier, CLAMS app, timestamp, total
+number of annotations and number of annotations per type.
+
+Does NOT show parameters and application configuration.
+
+
+-- timeframes
+
+Shows basic information of all timeframes.
+
+At the moment this does not group the timeframes accoring to apps. There used to be
+a setting to just get chyrons or segments or barsandtone frames, but this has been 
+retired.
+
+
+--transcript
+
+Shows the text from the transcript in pseudo sentences. Currently the sentences are
+determined by splitting on end-of-sentence punctuations, which does result in bad
+breaks after abbreviations. There are also stretches with barely any punctuation
+which gives rise to long run-on sentence.
+
+The transcript is taken from the last non-warning ASR view, so only the last added
+transcript will be summarized. It is assumed that Tokens in the view are ordered on
+text occurrence.
+
+
+--captions
+
+Shows captions from the Llava captioner app.
+
+
+
+TODO:
+
+- For the time unit we should really update get_start(), get_end() and other methods.
+- Add parameters and appConfiguration to the views? Maybe as an options?
+- Whsiper sometimes throws out very long sentences with little or no punctuation, and
+  Kaldi consistently does the same in version 0.2.2 and 0. 2.3. Look intousing long
+  pauzes to split the text.
+- Group time frames.
+
 
 """
 
-import sys, io, json, argparse
+import sys, io, json, argparse, pathlib
+from collections import defaultdict
 
 from mmif.serialize import Mmif
 from mmif.vocabulary import DocumentTypes
 
 from utils import CharacterList
-from utils import get_last_asr_view, get_last_segmenter_view, get_aligned_tokens
+from utils import get_aligned_tokens
+from utils import get_transcript_view, get_last_segmenter_view, get_captions_view
 from graph import Graph
 import config
 
@@ -58,6 +122,7 @@ class Summary(object):
     tags            -  instance of Tags
     timeframes      -  instance of TimeFrames
     entities        -  instance of Entities
+    captions        -  instance of Captions
 
     """
 
@@ -67,9 +132,11 @@ class Summary(object):
         self.graph = Graph(self.mmif)
         self.documents = Documents(self)
         self.views = Views(self)
-        self.transcript = Transcript(self)
-        self.tags = Tags(self)
         self.timeframes = TimeFrames(self)
+        self.transcript = Transcript(self)
+        self.captions = Captions(self)
+
+        self.tags = Tags(self)
         self.segments = Segments(self)
         self.entities = Entities(self)
         self.tags = Tags(self)
@@ -83,7 +150,8 @@ class Summary(object):
     def video_documents(self):
         return self.mmif.get_documents_by_type(DocumentTypes.VideoDocument)
 
-    def report(self, views=False, full=False, transcript=False,
+    def report(self, outfile=None, full=False, views=False, timeframes=False,
+               transcript=False, captions=False,
                segments=False, barsandtone=False, slate=False, chyrons=False,
                credits=False, entities=False, tags=False):
         json_obj = {
@@ -93,6 +161,11 @@ class Summary(object):
             json_obj['views'] = self.views.data
         if transcript or full:
             json_obj['transcript'] = self.transcript.data
+        if captions or full:
+            json_obj['captions'] = self.captions.as_json()
+        if timeframes or full:
+            json_obj['timeframes'] = self.timeframes.as_json()
+        
         if barsandtone or full:
             nodes = self.timeframes.get_nodes(frameType='bars-and-tone')
             json_obj['bars-and-tone'] = [n.summary() for n in nodes]
@@ -109,7 +182,12 @@ class Summary(object):
             json_obj['tags'] = [n.summary() for n in self.tags]
         if entities or full:
             json_obj['entities'] = self.entities.as_json()
-        return json.dumps(json_obj, indent=2)
+        report = json.dumps(json_obj, indent=2)
+        if outfile is None:
+            return report
+        else:
+            with open(outfile, 'w') as fh:
+                fh.write(report)
 
     def print_warnings(self):
         for warning in self.warnings:
@@ -157,10 +235,14 @@ class Views(object):
 
     @staticmethod
     def summary(view):
+        annotation_types = defaultdict(int)
+        for annotation in view.annotations:
+            annotation_types[annotation.at_type.shortname] += 1
         return { 'id': view.id,
                  'app': view.metadata.app,
                  'timestamp': view.metadata.timestamp,
-                 'annotations': len(view.annotations) }
+                 'annotations': len(view.annotations),
+                 'annotation_types': dict(annotation_types) }
 
     def pp(self):
         print('\nViews -> ')
@@ -178,39 +260,52 @@ class Transcript(object):
     #       what is available in the MMIF file
     # TODO: add offsets to sentences
     # TODO: should take the latest fastpunct view if we have a Kaldi view
+    # TODO: use timepoints to break the transcript at long pauses
 
     def __init__(self, summary):
         self.data = []
-        view = get_last_asr_view(summary.mmif.views)
-        if view:
+        view = get_transcript_view(summary.mmif.views)
+        if view is not None:
             documents = view.get_documents()
             if len(documents) > 1:
                 summary.warnings.append(f'More than one TextDocument in ASR view {view.id}')
-            tokens = get_aligned_tokens(view)
+            sentence_nodes = summary.graph.get_nodes(config.SENTENCE, view_id=view.id)
+            token_nodes = summary.graph.get_nodes(config.TOKEN)
+            sentences = []
             current_sentence = []
-            for token in tokens:
-                current_sentence.append(token)
-                if token.properties['text'] in ('.', '?', '!'):
-                    self.add_sentence(current_sentence)
+            sentences.append(current_sentence)
+            first = token_nodes[0]
+            for token_node in token_nodes:
+                props = token_node.properties
+                t1, t2 = token_node.anchors['time-offsets']
+                current_sentence.append(
+                    [token_node.identifier, t1, t2, props['start'], props['end'], props['word']])
+                if token_node.properties['word'][-1] in ('.', '?', '!'):
                     current_sentence = []
-            if current_sentence:
-                self.add_sentence(current_sentence)
+                    sentences.append(current_sentence)
+            transcript_size = token_nodes[-1].properties['end']
+            transcript = CharacterList(transcript_size)
+            for s in sentences:
+                self.add_sentence(transcript, s)
 
     def __str__(self):
         return str(self.data)
 
-    def add_sentence(self, sentence: list):
+    def add_sentence(self, transcript: CharacterList, sentence: list):
         if not sentence:
             return
-        start = sentence[0].properties['timeframe'][0]
-        end = sentence[-1].properties['timeframe'][1]
-        end_char = sentence[-1].properties['end']
-        tokens = [t.properties['text'] for t in sentence]
-        text = CharacterList(end_char)
-        for token in sentence:
-            text.set_chars(token.properties['text'],
-                           token.properties['start'], token.properties['end'])
-        self.data.append([text.getvalue(), start, end])
+        start_time = sentence[0][1]
+        end_time = sentence[-1][2]
+        duration = end_time - start_time
+        start_offset = sentence[0][3]
+        end_offset = sentence[-1][4]
+        length = end_offset - start_offset
+        for tok_id, t1, t2, p1, p2, word in sentence:
+            transcript.set_chars(word, p1, p2)
+        sentence_text = transcript.getvalue(start_offset, end_offset)
+        self.data.append(
+            { 'start-time': start_time, 'end-time': end_time,
+              'duration': duration, 'length': length, 'text': sentence_text })
 
     def pp(self):
         print('\nTranscript -> ')
@@ -267,8 +362,30 @@ class TimeFrames(Nodes):
     def __init__(self, summary):
         super().__init__(summary)
         for timeframe in self.graph.get_nodes(config.TIME_FRAME):
-            if timeframe.has_frame_type():
+            if timeframe.has_label():
                 self.add(timeframe)
+
+    def as_json(self):
+        timeframes = []
+        for tf in self.nodes:
+            #print('>>>', tf)
+            #print('---', tf.properties)
+            #print('---', tf.anchors.keys())
+            label = tf.frame_type()
+            try:
+                start, end = tf.anchors['time-offsets']
+            except KeyError:
+                # TODO: this defies the notion of using the anchors for this,
+                # but maybe in this case we should go straight to the start/end
+                start = tf.properties['start']
+                end = tf.properties['end']
+            representatives = tf.representatives()
+            rep_tps = [rep.properties['timePoint'] for rep in representatives]
+            score = tf.properties.get('classification', {}).get(label)
+            timeframes.append(
+                { 'identifier': tf.identifier, 'label': label, 'score': score,
+                  'start-time': start, 'end-time': end, 'representatives': rep_tps })
+        return timeframes
 
     def pp(self):
         print('\nTimeframes -> ')
@@ -390,6 +507,29 @@ class Entities(Nodes):
                 print('   ', e, e.start_in_video())
 
 
+class Captions(Nodes):
+
+    def __init__(self, summary):
+        super().__init__(summary)
+        self.captions = []
+        view = get_captions_view(summary.mmif.views)
+        if view is not None:
+            for doc in self.graph.get_nodes(config.TEXT_DOCUMENT, view_id=view.id):
+                text = doc.properties['text']['@value'].split('[/INST]')[-1]
+                p1, p2 = doc.anchors['time-offsets']
+                if 'representatives' in doc.anchors:
+                    tp_id = doc.anchors["representatives"][0]
+                    tp = summary.graph.get_node(tp_id)
+                self.captions.append(
+                    { 'identifier': doc.identifier,
+                      'time-point': tp.properties['timePoint'],
+                      'text': text })
+
+    def as_json(self):
+        return self.captions
+        #return [(ident, p1, p2, text) for ident, p1, p2, text in self.captions]
+
+
 class Bins(object):
 
     def __init__(self, summary):
@@ -467,11 +607,16 @@ class Bin(object):
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(prog='MIFF Summarizer')
-    parser.add_argument('filename')
-    parser.add_argument('--full', action='store_true', help='print full report')
+    parser = argparse.ArgumentParser(description='Create a JSON Summary for a MMIF file')
+    parser.add_argument('-d', metavar='DIRECTORY', help='directory with input files')
+    parser.add_argument('-i', metavar='MMIF_FILE', help='input MMIF file')
+    parser.add_argument('-o', metavar='JSON_FILE', help='output summary file')
+    parser.add_argument('--full', action='store_true', help='print full report, overrule other options')
     parser.add_argument('--views', action='store_true', help='include view metadata')
     parser.add_argument('--transcript', action='store_true', help='include transcript')
+    parser.add_argument('--captions', action='store_true', help='include Llava captions')
+    parser.add_argument('--timeframes', action='store_true', help='include all time frames')
+
     parser.add_argument('--barsandtone', action='store_true', help='include bars-and-tone')
     parser.add_argument('--segments', action='store_true', help='include segments')
     parser.add_argument('--slate', action='store_true', help='include slate')
@@ -485,11 +630,28 @@ def parse_arguments():
 if __name__ == '__main__':
 
     args = parse_arguments()
-    with open(args.filename) as fh:
-        mmif_text = fh.read()
-        mmif_summary = Summary(mmif_text)
-        print(mmif_summary.report(full=args.full, views=args.views,
-                                  transcript=args.transcript, segments=args.segments,
-                                  barsandtone=args.barsandtone, slate=args.slate,
-                                  credits=args.credits, chyrons=args.chyrons,
-                                  entities=args.entities, tags=args.tags))
+    if args.d:
+        for mmif_file in pathlib.Path(args.d).iterdir():
+            if mmif_file.is_file() and mmif_file.name.endswith('.mmif'):
+                print(mmif_file)
+                json_file = str(mmif_file)[:-4] + 'json'
+                mmif_summary = Summary(mmif_file.read_text())
+                mmif_summary.report(
+                    outfile=json_file, full=args.full, views=args.views,
+                    timeframes=args.timeframes, transcript=args.transcript,
+                    captions=args.captions,
+                    segments=args.segments, barsandtone=args.barsandtone, slate=args.slate,
+                    credits=args.credits, chyrons=args.chyrons, entities=args.entities,
+                    tags=args.tags)
+    elif args.i and args.o:
+        with open(args.i) as fh:
+            mmif_text = fh.read()
+            mmif_summary = Summary(mmif_text)
+            mmif_summary.report(
+                outfile=args.o, full=args.full,
+                views=args.views, timeframes=args.timeframes,
+                transcript=args.transcript, captions=args.captions,
+
+                segments=args.segments, barsandtone=args.barsandtone, slate=args.slate,
+                credits=args.credits, chyrons=args.chyrons, entities=args.entities,
+                tags=args.tags)

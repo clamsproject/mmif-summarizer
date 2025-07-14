@@ -7,7 +7,7 @@ from pathlib import Path
 from xml.sax.saxutils import quoteattr, escape
 from collections import UserList
 
-from config import KALDI, WHISPER, SEGMENTER
+from config import KALDI, WHISPER, CAPTIONER, SEGMENTER
 from config import TOKEN, ALIGNMENT, TIME_FRAME
 from config import GRAPH_FORMATTING
 
@@ -22,12 +22,28 @@ def type_name(annotation):
     return annotation.at_type.split('/')[-1]
 
 
-def get_last_asr_view(views):
+def get_transcript_view(views):
+    """Return the last Whisper or Kaldi view that is not a warnings view."""
+    # TODO: this now has a simplified idea of how to find a view, should at least
+    # move towards doing some regular expression matching on the WHISPER config
+    # setting. The same holds for other functions to get views.
     for view in reversed(views):
-        for app in KALDI, WHISPER:
-            if view.metadata.app.startswith(app):
-                return view
+        if view.metadata.app in KALDI + WHISPER:
+            if view.metadata.warnings:
+                continue
+            return view
     return None
+
+
+def get_captions_view(views):
+    """Return the last view created by the Llava captioner."""
+    for view in reversed(views):
+        if view.metadata.app in CAPTIONER:
+            if view.metadata.warnings:
+                continue
+            return view
+    return None
+
 
 def get_last_segmenter_view(views):
     for view in reversed(views):
@@ -35,6 +51,7 @@ def get_last_segmenter_view(views):
         if view.metadata.app.startswith(SEGMENTER):
             return view
     return None
+
 
 def get_aligned_tokens(view):
     """Get a list of tokens from an ASR view where for each token we add a timeframe
@@ -49,6 +66,18 @@ def get_aligned_tokens(view):
             token.properties['timeframe'] = (frame.properties['start'],
                                              frame.properties['end'])
     return idx.tokens
+
+
+def timestamp(milliseconds: int):
+    seconds = milliseconds // 1000
+    minutes = seconds // 60
+    hours = minutes // 60
+    ms = milliseconds % 1000
+    s = seconds % 60
+    m = minutes % 60
+    return f'{m:02d}:{s:02d}'
+    #return f'{hours}:{m:02d}:{s:02d}.{ms:03d}'
+
 
 
 class AnnotationsIndex:
@@ -100,8 +129,8 @@ class CharacterList(UserList):
     def set_chars(self, text: str, start: int, end: int):
         self.data[start:end] = text
 
-    def getvalue(self):
-        return ''.join(self.data)
+    def getvalue(self, start: int, end: int):
+        return ''.join(self.data[start:end])
 
 
 def xml_tag(tag, subtag, objs, props, indent='  ') -> str:
@@ -182,14 +211,39 @@ def print_path(p):
         print(p, end=' ')
 
 
-def normalize_id(view: 'View', annotation: 'Annotation'):
-    """Change the identifier to include the view identifier if it wasn't included,
-    do nothing otherwise."""
-    # TODO: should set the identifier, this is still being debugged
-    newid = ''
+def normalize_id(doc_ids: list, view: 'View', annotation: 'Annotation'):
+    """Change identifiers to include the view identifier if it wasn't included,
+    do nothing otherwise. This applies to the Annotation id, target, source and
+    target properties. Not that timePoint is not included because the value is
+    an integer and not an identifier."""
+    debug = False
+    #if annotation.id == 'al_1':
+    #    debug = True
+    #    print('>>>', annotation)
+    attype = annotation.at_type.shortname
+    props = annotation.properties
     if ':' not in annotation.id and view is not None:
-        newid = f'{view.id}:{annotation.id}'
-    print(annotation.id, newid, annotation.at_type)
+        if annotation.id not in doc_ids:
+            newid = f'{view.id}:{annotation.id}'
+            annotation.properties['id'] = newid
+    if 'targets' in props:
+        new_targets = []
+        for target in props['targets']:
+            if ':' not in target and view is not None:
+                if target not in doc_ids:
+                    new_targets.append(f'{view.id}:{target}')
+            else:
+                new_targets.append(target)
+        props['targets'] = new_targets
+    if attype == 'Alignment':
+        if ':' not in props['source'] and view is not None:
+            if props['source'] not in doc_ids:
+                props['source'] = f'{view.id}:{props["source"]}'
+        if ':' not in props['target'] and view is not None:
+            if props['target'] not in doc_ids:
+                props['target'] = f'{view.id}:{props["target"]}'
+    if debug:
+        print('===', annotation)
 
 
 def get_annotations_from_view(view, annotation_type):
@@ -228,46 +282,57 @@ def get_view_label(view):
 
 def get_label(view: 'mmif.View', annotation: 'mmif.Annotation'):
     at_type = annotation.at_type.shortname
+    props = annotation.properties
     if at_type == 'VideoDocument':
         identifier = annotation.id.replace('_', '')
-        location = Path(annotation.properties.location).name
+        location = Path(props.location).name
         return f'{identifier} {at_type}\n{location}'
     view_id = view.id.replace('_', '')
     if at_type == 'TimeFrame':
-        if 'start' in annotation.properties and 'end' in annotation.properties:
-            start = f'{annotation.properties["start"]}'
-            end = f'{annotation.properties["end"]}'
+        if 'start' in props and 'end' in props:
+            start = f'{props["start"]}'
+            end = f'{props["end"]}'
             label = f'{view_id} TF\n{start}-{end}'
-        elif 'targets' in annotation.properties:
-            start = annotation.properties['targets'][0]
-            end = annotation.properties['targets'][-1]
+        elif 'targets' in props:
+            start = props['targets'][0]
+            end = props['targets'][-1]
             label = f'{view_id} TF\n{start}-{end}'
         else:
             label = 'NONE'
-        ftype = f'{annotation.properties.get("frameType")}'
+        ftype = f'{props.get("frameType")}'
         return f'{label} {ftype}' if ftype != 'None' else f'{label}'
     elif at_type == 'Token':
-        return f'{view_id}\n{annotation.properties.get("text")}'
+        return f'{view_id} {props.get("start")}:{props.get("end")}\n{props.get("text")}'
     elif at_type == 'NamedEntity':
-        return f'{view_id} NE\n{annotation.properties.get("text")}'
+        return f'{view_id} NE\n{props.get("text")}'
     elif at_type == 'TextDocument':
-        text = annotation.properties.text.value
+        text = props.text.value
         if len(text) > 100:
             text = f'{text[:100]}...'
         return f'{view_id} {at_type}\n{text}'
     elif at_type in ('NounChunk', 'Sentence'):
-        text = annotation.properties.get('text')
+        text = props.get('text')
         if len(text) > 15:
             text = f'{text[:15]}...'
         cat = 'NC' if at_type == 'NounChunk' else 'S'
         return f'{view_id} {cat}\n{text}'
     elif at_type == 'BoundingBox':
-        return f'{view_id} BB\n{str(annotation.properties.get("timePoint"))}'
+        return f'{view_id} BB\n{str(props.get("timePoint"))}'
     elif at_type == 'SemanticTag':
-        return f'{view_id} Tag\n{annotation.properties.get("tagName")}'
-    print(annotation, annotation.properties)
+        return f'{view_id} Tag\n{props.get("tagName")}'
+    print(annotation, props)
     return f'{view_id}\n{annotation.id.replace(":", "_")}'
 
+
+def anchor(annotation: 'mmif.Annotation'):
+    props = annotation.properties
+    if 'start' in props and 'end' in props:
+        return f'{props["start"]}-{props["end"]}'
+    elif 'timePoint' in props:
+        return props["timePoint"]
+    else:
+        return None
+    
 
 def get_shape_and_color(annotation_type: str):
     node_format = GRAPH_FORMATTING.get(annotation_type)
