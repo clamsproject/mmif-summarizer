@@ -299,7 +299,6 @@ class Node(object):
         # try the local property
         docid = self.properties.get('document')
         if docid is not None:
-            #docid = self.XXX_adjust_identifier(docid)
             # print('>>>', docid, self.graph.get_node(docid))
             return self.graph.get_node(docid)
         # try the metadata property
@@ -307,7 +306,6 @@ class Node(object):
             try:
                 metadata = self.view.metadata.contains[self.at_type]
                 docid = metadata['document']
-                #docid = self.XXX_adjust_identifier(docid)
                 return self.graph.get_node(docid)
             except KeyError:
                 return None
@@ -317,15 +315,6 @@ class Node(object):
         props = self.properties
         return "%s:%s:%s" % (self.document.identifier,
                              props['start'], props['end'])
-
-    def XXX_adjust_identifier(self, docid):
-        """Compose the identifier if needed."""
-        if docid is None:
-            return None
-        elif ':' not in docid and docid not in self.graph.nodes:
-            return compose_id(self.view.id, docid)
-        else:
-            return docid
 
     def paths_to_docs(self):
         """Return all the paths from the node to documents."""

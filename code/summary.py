@@ -78,9 +78,10 @@ TODO:
 - For the time unit we should really update get_start(), get_end() and other methods.
 - Add parameters and appConfiguration to the views? Maybe as an options?
 - Whsiper sometimes throws out very long sentences with little or no punctuation, and
-  Kaldi consistently does the same in version 0.2.2 and 0. 2.3. Look intousing long
-  pauzes to split the text.
-- Group time frames.
+  Kaldi consistently does the same in version 0.2.2 and 0.2.3. Look into using long
+  pauses to split the text. Also check whether the Sentence instances provide better
+  data.
+- Keep all the view metadata, or add an option to do that.
 
 
 """
@@ -98,7 +99,7 @@ from graph import Graph
 import config
 
 
-VERSION = '0.1.0'
+VERSION = '0.2.0'
 
 
 def debug(*texts):
@@ -135,15 +136,13 @@ class Summary(object):
         self.timeframes = TimeFrames(self)
         self.transcript = Transcript(self)
         self.captions = Captions(self)
-
-        self.tags = Tags(self)
-        self.segments = Segments(self)
         self.entities = Entities(self)
-        self.tags = Tags(self)
         self.validate()
         self.print_warnings()
 
     def validate(self):
+        """Minimal validation of the input. Mostly a place holder because all it
+        does now is to check how many video documents there are."""
         if len(self.video_documents()) > 1:
             raise SummaryException("More than one video document in MMIF file")
 
@@ -151,9 +150,7 @@ class Summary(object):
         return self.mmif.get_documents_by_type(DocumentTypes.VideoDocument)
 
     def report(self, outfile=None, full=False, views=False, timeframes=False,
-               transcript=False, captions=False,
-               segments=False, barsandtone=False, slate=False, chyrons=False,
-               credits=False, entities=False, tags=False):
+               transcript=False, captions=False, entities=False):
         json_obj = {
             'mmif_version': self.mmif.metadata.mmif,
             'documents': self.documents.data}
@@ -165,21 +162,6 @@ class Summary(object):
             json_obj['captions'] = self.captions.as_json()
         if timeframes or full:
             json_obj['timeframes'] = self.timeframes.as_json()
-        
-        if barsandtone or full:
-            nodes = self.timeframes.get_nodes(frameType='bars-and-tone')
-            json_obj['bars-and-tone'] = [n.summary() for n in nodes]
-        if slate or full:
-            nodes = self.timeframes.get_nodes(frameType='slate')
-            json_obj['slate'] = [n.summary() for n in nodes]
-        if segments or full:
-            json_obj['segments'] = [n.summary() for n in self.segments]
-        if chyrons or full:
-            pass
-        if credits or full:
-            pass
-        if tags or full:
-            json_obj['tags'] = [n.summary() for n in self.tags]
         if entities or full:
             json_obj['entities'] = self.entities.as_json()
         report = json.dumps(json_obj, indent=2)
@@ -366,11 +348,9 @@ class TimeFrames(Nodes):
                 self.add(timeframe)
 
     def as_json(self):
-        timeframes = []
+        timeframes = defaultdict(list)
         for tf in self.nodes:
-            #print('>>>', tf)
-            #print('---', tf.properties)
-            #print('---', tf.anchors.keys())
+            #print(f'>>> {tf}\n--- {tf.properties}\n--- {tf.anchors.keys()}')
             label = tf.frame_type()
             try:
                 start, end = tf.anchors['time-offsets']
@@ -382,7 +362,8 @@ class TimeFrames(Nodes):
             representatives = tf.representatives()
             rep_tps = [rep.properties['timePoint'] for rep in representatives]
             score = tf.properties.get('classification', {}).get(label)
-            timeframes.append(
+            app = tf.view.metadata.app
+            timeframes[app].append(
                 { 'identifier': tf.identifier, 'label': label, 'score': score,
                   'start-time': start, 'end-time': end, 'representatives': rep_tps })
         return timeframes
@@ -393,35 +374,6 @@ class TimeFrames(Nodes):
             summary = tf.summary()
             print('    %s:%s %s' % (summary['start'], summary['end'],
                                     summary['frameType']))
-
-
-class Segments(Nodes):
-
-    def __init__(self, summary):
-        super().__init__(summary)
-        self.summary = summary
-        self.mmif = summary.mmif
-        self.view = get_last_segmenter_view(self.mmif.views)
-        for timeframe in self.summary.timeframes:
-            # TODO: not good at all this code
-            if timeframe.frame_type() in ('speech', 'non-speech'):
-                self.add(timeframe)
-
-
-class Tags(Nodes):
-
-    """For now, we take all semantic tags."""
-
-    def __init__(self, summary):
-        super().__init__(summary)
-        tags = {}
-        for tag in self.graph.get_nodes(config.SEMANTIC_TAG):
-            #sys.stderr.write(f'{type(tag)} {tag} {tag.annotation}\n')
-            tags[tag.properties['text']] = tag
-        #for t in tags:
-        #    sys.stderr.write(f'{t}\n')
-        for tag in tags.values():
-            self.add(tag)
 
 
 class Entities(Nodes):
@@ -442,7 +394,6 @@ class Entities(Nodes):
             self.add(ent)
         self._create_node_index()
         self._group()
-        self._add_tags(summary.tags)
 
     def __str__(self):
         return f'<Entities with {len(self.nodes_idx)} nodes and {len(self.bins)} bins>'
@@ -616,13 +567,6 @@ def parse_arguments():
     parser.add_argument('--transcript', action='store_true', help='include transcript')
     parser.add_argument('--captions', action='store_true', help='include Llava captions')
     parser.add_argument('--timeframes', action='store_true', help='include all time frames')
-
-    parser.add_argument('--barsandtone', action='store_true', help='include bars-and-tone')
-    parser.add_argument('--segments', action='store_true', help='include segments')
-    parser.add_argument('--slate', action='store_true', help='include slate')
-    parser.add_argument('--credits', action='store_true', help='include credits')
-    parser.add_argument('--chyrons', action='store_true', help='include chyrons')
-    parser.add_argument('--tags', action='store_true', help='include semantic tags')
     parser.add_argument('--entities', action='store_true', help='include entities from transcript')
     return parser.parse_args()
 
@@ -639,19 +583,12 @@ if __name__ == '__main__':
                 mmif_summary.report(
                     outfile=json_file, full=args.full, views=args.views,
                     timeframes=args.timeframes, transcript=args.transcript,
-                    captions=args.captions,
-                    segments=args.segments, barsandtone=args.barsandtone, slate=args.slate,
-                    credits=args.credits, chyrons=args.chyrons, entities=args.entities,
-                    tags=args.tags)
+                    captions=args.captions, entities=args.entities)
     elif args.i and args.o:
         with open(args.i) as fh:
             mmif_text = fh.read()
             mmif_summary = Summary(mmif_text)
             mmif_summary.report(
-                outfile=args.o, full=args.full,
-                views=args.views, timeframes=args.timeframes,
-                transcript=args.transcript, captions=args.captions,
-
-                segments=args.segments, barsandtone=args.barsandtone, slate=args.slate,
-                credits=args.credits, chyrons=args.chyrons, entities=args.entities,
-                tags=args.tags)
+                outfile=args.o, full=args.full, views=args.views,
+                timeframes=args.timeframes, transcript=args.transcript,
+                captions=args.captions, entities=args.entities)
