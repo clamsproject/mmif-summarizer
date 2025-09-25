@@ -1,12 +1,26 @@
+[ [developer notes](../developer-notes.md)
+| [whisper](whisper.md)
+| kaldi
+| [SWT-DocTR](swt-doctr.md)
+| [SWT-Llava](swt-llava.md)
+| [spaCy](spacy.md)
+]
+
 ## Kaldi pipeline
 
-### aapb-pua-kaldi-wrapper-0.2.X
+For aapb-pua-kaldi-wrapper/0.2.2 and aapb-pua-kaldi-wrapper/0.2.3.
+
+Note that these are not the same as the pipeline mentioned int the [developer notes](../developer-notes.md). This is of limited concern sice Kaldi is pretty much out of the loop now.
+
+Another thing to note is that these pipelines ran in MMIF version 0.4.0, and when you try to run this in the current version 1.0.5 it does not end well. Another reason to ignore this for now. This is probably different for aapb-pua-kaldi-wrapper/v3. So this section is not complete till we have looked at that version.
 
 0.2.2: checked with a shortened file of unknown provenance.<br/>
 0.2.3: checked with cpb-aacip-507-028pc2tq55.
 
-The first file has one view with 1 TextDocument, 187 Tokens, 187 TimeFrames and 188 Alignments. The TextDocument is aligned to the VideoDocument and the Tokens are aligned with TimeFrames. These is all pretty much the same as with [Whisper](whisper.md) except that there are no Sentence type annotations. The second file has the same structure.
+The first file has one view with 1 TextDocument, 187 Tokens, 187 TimeFrames and 188 Alignments. The TextDocument is aligned to the VideoDocument and the Tokens are aligned with TimeFrames. These is all pretty much the same as with [Whisper](whisper.md) except that there are no Sentence type annotations. Another difference with WHisper is that these files do not have any punctuation. The second file has the same structure.
 
-<img src="images/kaldi.png" height=140>
+The graph is also very similar to the graph for Whisper:
 
-There is no punctuation and there are no Sentence types, so we need to either introduce punctuation or I use a semi-random way of using time signutures of tokens to create sentence-like objects. For now, everything ends up in one sentence.
+<img src="images/kaldi.png" height=220>
+
+Since there is no punctuation and no Sentence types, the summarizer output has everything end up in one transcript element. We could either introduce punctuation or use a semi-random way of using time signatures of tokens to create sentence-like objects. However, we are leaning towards never having the summarizer add information to the CLAMS output. 

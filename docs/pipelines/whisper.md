@@ -1,9 +1,27 @@
+[ [developer notes](../developer-notes.md)
+| whisper
+| [kaldi](kaldi.md)
+| [SWT-DocTR](swt-doctr.md)
+| [SWT-Llava](swt-llava.md)
+| [spaCy](spacy.md)
+]
+
 ## Whisper Pipeline
 
-The current canonical pipeline is **whisper-wrapper-v8**.
+The current canonical pipeline is **whisper-wrapper/v8**.
+
+Full list of pipelines:
+
+- whisper-wrapper/v3
+- whisper-wrapper/v6-3-ge33e60f
+- whisper-wrapper/v7
+- whisper-wrapper/v8
+- whisper-wrapper/v8-3-g737e280
 
 
 ### Data Description
+
+For whisper-wrapper/v8.
 
 Checked this on cpb-aacip-507-154dn40c26.
 
@@ -15,11 +33,14 @@ Contains one VideoDocument d1 in the documents list and two views. One view (v\_
 - TimeFrame (9,375). With frameType (always "speech"), start and end properties.
 - Alignment (9,376).
 
-<img src="images/whisper.png" height=140>
+Here is a fragment in graph form. In all graphs, the document from the sources list is in green, alignments are straight lines and anchorings via start/end/targets properties are arrows.
+ 
+<img src="images/whisper.png" height=220>
+
 
 ### Output
 
-For the **summary** we get all the Sentences with their start and end timepoints and some other goodies.
+For the summary we get all the Sentences with their start and end timepoints and some other goodies.
 
 ```json
 {
@@ -31,7 +52,7 @@ For the **summary** we get all the Sentences with their start and end timepoints
 }
 ```
 
-Problem: the Sentences are not Sentences, instead, they are semi-random Spans that cut through sentence boundaries with abandon. Here are the first 10 sentences from the example file (well, skipping the fist which was a long sequence of beeps):
+Problem: the Sentences are not Sentences, instead, they are semi-random Spans that cut through sentence boundaries with abandon. Here are the first 10 sentences from the example file (well, skipping the first which was a long sequence of beeps):
 
 ```
  667  702  beep, beep, beep, beep, beep, beep.
@@ -46,13 +67,4 @@ Problem: the Sentences are not Sentences, instead, they are semi-random Spans th
 ```
 
 Note that there is no real sentence structure, but there are still punctuation characters to work with if we chose to.
-
-Other Whisper versions that we have data for and that need to be tested:
-
-- whisper-wrapper-v3
-- whisper-wrapper-v6-3-ge33e60f
-- whisper-wrapper-v7
-- whisper-wrapper-v8
-- whisper-wrapper-v8-3-g737e280
-
 

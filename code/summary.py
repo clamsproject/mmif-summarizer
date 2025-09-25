@@ -28,15 +28,15 @@ Example:
 
 OPTIONS:
 
+-i INFILE -o OUTFILE
+
+Run the summarizer over a single MMIF file and write the JSON summary to OUTFILE.
+
 -d DIRECTORY
 
 Run the summarizer over all MMIF files in the directory, input files are assumed to 
-have the .mmif extension and output files will be written in the same directpry with
+have the .mmif extension and output files will be written in the same directory with
 the .json extension.
-
--i INFILE and -o OUTFILE
-
-MMIF file to read and JSON summary file to write to.
 
 --views
 
@@ -45,15 +45,13 @@ number of annotations and number of annotations per type.
 
 Does NOT show parameters and application configuration.
 
-
 -- timeframes
 
 Shows basic information of all timeframes.
 
 At the moment this does not group the timeframes accoring to apps. There used to be
-a setting to just get chyrons or segments or barsandtone frames, but this has been 
+settings to just get chyrons or segments or barsandtone frames, but those has been 
 retired.
-
 
 --transcript
 
@@ -66,7 +64,6 @@ The transcript is taken from the last non-warning ASR view, so only the last add
 transcript will be summarized. It is assumed that Tokens in the view are ordered on
 text occurrence.
 
-
 --captions
 
 Shows captions from the Llava captioner app.
@@ -76,7 +73,7 @@ Shows captions from the Llava captioner app.
 TODO:
 
 - For the time unit we should really update get_start(), get_end() and other methods.
-- Add parameters and appConfiguration to the views? Maybe as an options?
+- Add parameters and appConfiguration to the views. Maybe use an options for this.
 - Whsiper sometimes throws out very long sentences with little or no punctuation, and
   Kaldi consistently does the same in version 0.2.2 and 0.2.3. Look into using long
   pauses to split the text. Also check whether the Sentence instances provide better
@@ -236,58 +233,65 @@ class Transcript(object):
 
     """The transcript contains the string value from the first text document in the
     last ASR view. It issues a warning if there is more than one text document in
-    the view."""
+    the view.
 
-    # TODO: should make this a list of sentences or paragraphs, depending on
-    #       what is available in the MMIF file
-    # TODO: add offsets to sentences
-    # TODO: should take the latest fastpunct view if we have a Kaldi view
-    # TODO: use timepoints to break the transcript at long pauses
+    TODO: this only deals with Whisper output, should add Kaldi capabilities, which
+    requires creating sentences by just setting a length or perhaps using timepoints
+    to break the transcript at long pauses.
+    """
 
     def __init__(self, summary):
+        self.summary = summary
         self.data = []
         view = get_transcript_view(summary.mmif.views)
         if view is not None:
             documents = view.get_documents()
             if len(documents) > 1:
                 summary.warnings.append(f'More than one TextDocument in ASR view {view.id}')
-            sentence_nodes = summary.graph.get_nodes(config.SENTENCE, view_id=view.id)
-            token_nodes = summary.graph.get_nodes(config.TOKEN)
-            sentences = []
-            current_sentence = []
-            sentences.append(current_sentence)
-            first = token_nodes[0]
-            for token_node in token_nodes:
-                props = token_node.properties
-                t1, t2 = token_node.anchors['time-offsets']
-                current_sentence.append(
-                    [token_node.identifier, t1, t2, props['start'], props['end'], props['word']])
-                if token_node.properties['word'][-1] in ('.', '?', '!'):
-                    current_sentence = []
-                    sentences.append(current_sentence)
-            transcript_size = token_nodes[-1].properties['end']
+            s_nodes = summary.graph.get_nodes(config.SENTENCE, view_id=view.id)
+            sentences = self.collect_targets(s_nodes)
+            sentence_ids = [n.identifier for n in s_nodes]
+            # initialize the transcripts with all blanks, most blanks will be
+            # overwrite with characters from the tokens
+            transcript_size = sentences[-1][-1].properties['end']
             transcript = CharacterList(transcript_size)
-            for s in sentences:
-                self.add_sentence(transcript, s)
+            for s_id, s in zip(sentence_ids, sentences):
+                # back engineer the full transcript from the tokens
+                for t in s:
+                    start = t.properties['start']
+                    end = t.properties['end']
+                    word = t.properties['word']
+                    transcript.set_chars(word, start, end)
+                # get all pertinent data from the sentence
+                s_start_time = s[0].anchors['time-offsets'][0]
+                s_end_time = s[-1].anchors['time-offsets'][1]
+                s_start_offset = s[0].properties['start']
+                s_end_offset = s[-1].properties['end']
+                text = transcript.getvalue(s_start_offset, s_end_offset)
+                # ... and add them to the summary data
+                sentence_data = {
+                    "id": s_id,
+                    "start-time": s_start_time,
+                    "end-time": s_end_time,
+                    "duration": s_end_time - s_start_time,
+                    "length": len(text),
+                    "text": text }
+                self.data.append(sentence_data)
+            #print(transcript_size, transcript.getvalue(0, transcript_size))
 
     def __str__(self):
         return str(self.data)
 
-    def add_sentence(self, transcript: CharacterList, sentence: list):
-        if not sentence:
-            return
-        start_time = sentence[0][1]
-        end_time = sentence[-1][2]
-        duration = end_time - start_time
-        start_offset = sentence[0][3]
-        end_offset = sentence[-1][4]
-        length = end_offset - start_offset
-        for tok_id, t1, t2, p1, p2, word in sentence:
-            transcript.set_chars(word, p1, p2)
-        sentence_text = transcript.getvalue(start_offset, end_offset)
-        self.data.append(
-            { 'start-time': start_time, 'end-time': end_time,
-              'duration': duration, 'length': length, 'text': sentence_text })
+    def collect_targets(self, nodes):
+        """For each node (in this context a sentence node), collect all target nodes
+        (which are tokens) and return them as a list of list, one list for each node.
+        """
+        targets = []
+        for node in nodes:
+            node_target_ids = node.properties['targets']
+            node_targets = [self.summary.graph.get_node(stid) for stid in node_target_ids]
+            targets.append(node_targets)
+        return targets
 
     def pp(self):
         print('\nTranscript -> ')
