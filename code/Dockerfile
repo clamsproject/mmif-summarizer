@@ -1,11 +1,7 @@
-FROM python:3.6-slim-buster
+FROM ghcr.io/clamsproject/clams-python:0.5.3
 
 WORKDIR ./app
 
-RUN pip3 install beautifulsoup4===4.9.3
-RUN pip3 install lapps==0.0.2
-RUN pip3 install clams-python==0.5.0
-
 COPY ./ ./
 
-CMD ["python3", "run.py"]
+CMD ["python3", "app.py"]

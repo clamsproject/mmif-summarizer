@@ -1,26 +1,44 @@
-import json
+import sys, json
+from collections import defaultdict
 from operator import itemgetter
+from pathlib import Path
+import argparse
+
+import graphviz
 
 from mmif import Mmif
 
-import names
-from utils import compose_id
-from utils import flatten_paths, print_paths
+import config
+from utils import compose_id, flatten_paths, normalize_id
+from utils import get_shape_and_color, get_view_label, get_label
 
 
 class Graph(object):
 
     """Graph implementation for a MMIF document. Each node contains an annotation
     or document. Alignments are stored separately. Edges between nodes are created
-    from the alignments and added to the Node.targets property. The goal for the
-    graph is to store all useful annotation and to have simple ways to trace nodes
-    all the way up to the primary data."""
+    from the alignments and added to the Node.targets property. The first edge added
+    to Node.targets is the document that the Node points to (if there is one).
+
+    The goal for the graph is to store all useful annotation and to have simple ways
+    to trace nodes all the way up to the primary data."""
 
     def __init__(self, mmif):
         self.mmif = mmif if type(mmif) is Mmif else Mmif(mmif)
         self.documents = []
         self.nodes = {}
         self.alignments = []
+        self._init_nodes()
+        self._init_edges()
+        # Third pass to add links between text elements, in particular from
+        # entities to tokens, adding lists of tokens to entities.
+        tokens = self.get_nodes(config.TOKEN)
+        entities = self.get_nodes(config.NAMED_ENTITY)
+        self.token_idx = TokenIndex(tokens)
+        for e in entities:
+            e.tokens = self.token_idx.get_tokens_for_node(e)
+
+    def _init_nodes(self):
         # The top-level documents are added as nodes, but they are also put in
         # the documents list.
         for doc in self.mmif.documents:
@@ -28,48 +46,76 @@ class Graph(object):
             self.documents.append(doc)
         # First pass over all annotations and documents in all views and save
         # them in the graph.
+        doc_ids = [d.id for d in self.documents]
         for view in self.mmif.views:
             for annotation in view.annotations:
-                self.add_node(view, annotation)
+                normalize_id(doc_ids, view, annotation)
+                if annotation.at_type.shortname == config.ALIGNMENT:
+                    # alignments are not added as nodes, but we do keep them around
+                    self.alignments.append((view, annotation))
+                else:
+                    self.add_node(view, annotation)
+
+    def _init_edges(self):
         # Second pass over the alignments so we create edges.
         for view, alignment in self.alignments:
             self.add_edge(view, alignment)
-        # Third pass to add links between text elements, in particular from
-        # entities to tokens, adding lists of tokens to entities.
-        tokens = self.get_nodes(names.TOKEN)
-        entities = self.get_nodes(names.NAMED_ENTITY)
-        self.token_idx = TokenIndex(tokens)
-        for e in entities:
-            e.tokens = self.token_idx.get_tokens_for_node(e)
 
     def __str__(self):
         return "<Graph nodes=%d>" % len(self.nodes)
 
     def add_node(self, view, annotation):
-        """Add annotations and documents to the graph."""
-        if annotation.at_type.shortname == names.ALIGNMENT:
-            # alignments are not added as nodes, but we do keep them around
-            self.alignments.append((view, annotation))
-        else:
-            node = NodeFactory.new_node(self, view, annotation)
-            self.nodes[node.identifier] = node
+        """Add an annotation as a node to the graph."""
+        node = Nodes.new(self, view, annotation)
+        self.nodes[node.identifier] = node
 
     def add_edge(self, view, alignment):
-        source_id = compose_id(view.id, alignment.properties['source'])
-        target_id = compose_id(view.id, alignment.properties['target'])
+        source_id = alignment.properties['source']
+        target_id = alignment.properties['target']
+        #print(alignment.id, source_id, target_id)
         source = self.get_node(source_id)
         target = self.get_node(target_id)
         # make sure the direction goes from token or textdoc to annotation
-        if target.annotation.at_type.shortname in (names.TOKEN, names.TEXT_DOCUMENT):
+        if target.annotation.at_type.shortname in (config.TOKEN, config.TEXT_DOCUMENT):
             source, target = target, source
         source.targets.append(target)
+        #if target_id == "v_3:td_1":
+        #    source.set_alignment_anchors(target, debug=True)
+        source.set_alignment_anchors(target)
+        target.set_alignment_anchors(source)
 
     def get_node(self, node_id):
         return self.nodes.get(node_id)
 
-    def get_nodes(self, short_at_type):
+    def get_nodes(self, short_at_type: str, view_id : str = None):
+        """Get all nodes for an annotation type, using the short form. If a view
+        identifier is provided then only include nodes from that view."""
         return [node for node in self.nodes.values()
-                if node.at_type.shortname == short_at_type]
+                if (node.at_type.shortname == short_at_type
+                    and (view_id is None or node.view.id == view_id))]
+
+    def statistics(self):
+        stats = defaultdict(int)
+        for node in self.nodes.values():
+            stats[node.at_type.shortname] += 1
+        return stats
+
+    def trim(self, start: int, end: int):
+        """Trim the graph and keep only those nodes that are included in graph
+        between two timepoints (both in milliseconds). This assumes that all nodes
+        are anchored on the time in the audio or video stream. At the moment it 
+        keeps all nodes that are not explicitly anchored."""
+        remove = set()
+        for node_id, node in self.nodes.items():
+            if 'time-point' in node.anchors:
+                if not start <= node.anchors['time-point'] <= end:
+                    remove.add(node_id)
+            if 'time-offsets' in node.anchors:
+                p1, p2 = node.anchors['time-offsets']
+                if not (start <= p1 <= end and start <= p2 <= end):
+                    remove.add(node_id)
+        new_nodes = [n for n in self.nodes.values() if not n.identifier in remove]
+        self.nodes = { node.identifier: node for node in new_nodes }
 
     def pp(self, fname=None):
         fh = sys.stdout if fname is None else open(fname, 'w')
@@ -84,25 +130,40 @@ class Graph(object):
 
 class TokenIndex(object):
 
+    """
+    The tokens are indexed on the identifier on the TextDocument that they occur
+    in and for each text document we have a list of <offsets, Node> pairs
+
+    {'v_4:td1': [
+        ((0, 5), <__main__.Node object at 0x1039996d0>),
+        ((5, 6), <__main__.Node object at 0x103999850>),
+        ...
+    }
+    """
+
     def __init__(self, tokens):
         self.tokens = {}
+        self.token_count = len(tokens)
         for t in tokens:
             tup = ((t.properties['start'], t.properties['end']), t)
             self.tokens.setdefault(t.document.identifier, []).append(tup)
         # Make sure the tokens for each document are ordered.
         for document, token_list in self.tokens.items():
             self.tokens[document] = sorted(token_list, key=itemgetter(0))
-        # In some cases there will be two tokens with identical offset (for
-        # example with tokenization from both Kaldi and spaCy, not sure what to
-        # do with these, but started some code to filter them, it doesn't do
-        # anything at the moment.
-        for document_id in self.tokens:
-            view_id = document_id.split(':')[0]
-            #print(view_id)
-            for (start, end), token in self.tokens[document_id]:
-                token_view = token.identifier.split(':')[0]
-                #print(' ', token.identifier, token_view)
+        # In some cases there are two tokens with identical offset (for example
+        # with tokenization from both Kaldi and spaCy, not sure what to do with
+        # these, but should probably be more careful on what views to access
 
+    def __len__(self):
+        return self.token_count
+
+    def __str__(self):
+        return f'<TokenIndex on with {len(self)} tokens>'
+
+    # TODO: benchmark this method. I may want to use something like this to 
+    # determine encloced nodes and enclosing nodes and that may blow up since
+    # that would be O(n^2). If it does matter, probably start using binary
+    # search or add an index from character offset to nodes.
     def get_tokens_for_node(self, node):
         """Return all tokens included in the span of a node."""
         doc = node.document.identifier
@@ -128,42 +189,107 @@ class Node(object):
         self.graph = graph
         self.view = view
         self.annotation = annotation
+        # copy some information from the Annotation
         self.at_type = annotation.at_type
-        self.identifier = self._create_identifier()
-        # copy the properties to the top-level, where we can edit them
+        self.identifier = annotation.id
         self.properties = json.loads(str(annotation.properties))
+        # get the document from the view or the properties
+        self.document = self._get_document()
         # The targets property contains a list of annotations or documents that
         # the node content points to. This includes the document the annotation
-        # points to (which is calculated right here) as well as the alignment
-        # from a token or text document to a bounding box or time frame (which
-        # is added later). The document is also stored separately.
-        target = self._get_document()
-        self.targets = [] if target is None else [target]
-        self.document = target
-        # Will be filled in the first time the summary() method is used
-        self.summary = None
+        # points to as well as the alignment from a token or text document to a
+        # bounding box or time frame (which is added later).
+        # TODO: the above does not seem to be true since there is no evidence of
+        # data from alignments being added.
+        self.targets = [] if self.document is None else [self.document]
+        self.set_local_anchors()
+
+    def set_local_anchors(self):
+        """Set the anchors that you can get from the annotation itself, which 
+        includes the start and end offsets, the coordinates and the timePoint of
+        a BoundingBox."""
+        # TODO: start/end in time frames now does the wrong thing
+        # TODO: should probably be overridden on subtypes
+        props = self.properties
+        attype = self.annotation.at_type.shortname
+        self.anchors = {}
+        if 'start' in props and 'end' in props:
+            self.anchors['text-offsets'] = (props['start'], props['end'])
+        if 'coordinates' in props:
+            self.anchors['coordinates'] = props['coordinates']
+        if 'timePoint' in props:
+            self.anchors['time-point'] = props['timePoint']
+        if 'targets' in props:
+            # TODO: this is a placeholder, should get the targets and
+            # find start/end properties
+            self.anchors['targets'] = props['targets']
+        if attype == 'TimeFrame' and "targets" in props:
+            tp1 = self.graph.nodes[props['targets'][0]]
+            tp2 = self.graph.nodes[props['targets'][-1]]
+            self.anchors['time-offsets'] = (
+                tp1.properties['timePoint'], tp2.properties['timePoint'])
+        if not self.anchors and not attype.endswith('Document'):
+            if attype != 'Annotation':
+                print('set_local_anchors', attype, self, self.properties.keys())
+
+    def set_alignment_anchors(self, target: None, debug=False):
+        source_attype = self.at_type.shortname
+        target_attype = target.at_type.shortname
+        if debug:
+            print('DEBUG', source_attype, target_attype)
+            print('DEBUG', self.annotation)
+            print('DEBUG', target.annotation)
+            print('DEBUG', target.anchors)
+        # If a TextDocument is aligned to a BoundingBox then we grab the coordinates
+        # TODO: how are we getting the time point?
+        if source_attype == 'TextDocument' and target_attype == 'BoundingBox':
+            if 'coordinates' in target.properties:
+                self.anchors['coordinates'] = target.properties['coordinates']
+            #print(source_attype, self.anchors)
+        elif source_attype == 'BoundingBox' and target_attype == 'TextDocument':
+            pass
+        # If a TextDocument is aligned to a TimeFrame then we copy time anchors
+        # but also targets and representatives, the latter because some alignments
+        # are not precise
+        elif source_attype == 'TextDocument' and target_attype == 'TimeFrame':
+            if 'start' in target.properties and 'end' in target.properties:
+                self.anchors['time-offsets'] = (target.properties['start'],
+                                                target.properties['end'])
+            if 'time-offsets' in target.anchors:
+                # TODO: is this ever used?
+                self.anchors['time-offsets'] = target.anchors['time-offsets']
+            if 'targets' in target.properties:
+                self.anchors['targets'] = target.properties['targets']
+            if 'representatives' in target.properties:
+                self.anchors['representatives'] = target.properties['representatives']
+            #print('-', source_attype, self.anchors, self, target)
+        elif source_attype == 'TimeFrame' and target_attype == 'TextDocument':
+            pass
+        # For Token-TimeFrame alignments all we need are the start and end time points
+        elif source_attype == 'Token' and target_attype == 'TimeFrame':
+            if 'start' in target.properties and 'end' in target.properties:
+                self.anchors['time-offsets'] = (target.properties['start'],
+                                                target.properties['end'])
+            #print(source_attype, self.anchors)
+        elif source_attype == 'TimeFrame' and target_attype == 'Token':
+            pass
+        # TODO: check whether some action is needed for the next two
+        elif source_attype == 'TextDocument' and target_attype == 'VideoDocument':
+            pass
+        elif source_attype == 'VideoDocument' and target_attype == 'TextDocument':
+            pass
+        else:
+            print('-', attype1, target_attype)
+        if debug:
+            print('>>>', self.anchors)
 
     def __str__(self):
         anchor = ''
-        if self.at_type.shortname == names.TOKEN:
-            anchor =  " %s:%s '%s'" % (self.properties['start'],
-                                       self.properties['end'],
-                                       self.properties['text'])
+        if self.at_type.shortname == config.TOKEN:
+            anchor = " %s:%s '%s'" % (self.properties['start'],
+                                      self.properties['end'],
+                                      self.properties.get('text'))
         return "<%s %s%s>" % (self.at_type.shortname, self.identifier, anchor)
-
-    def _get_view_id(self):
-        """Return the view identifier of the annoation, this will be None when
-        the Node was created from an element of the MMIF document list."""
-        return None if self.view is None else self.view.id
-
-    def _create_identifier(self):
-        """Create a composite identifier view_id:annotation_id. If the Node was
-        created for an element of the document list just retun the document
-        identifier."""
-        # TODO: what if the annotation_id already had the view_id prepended?
-        view_id = self._get_view_id()
-        anno_id = self.annotation.properties['id']
-        return anno_id if view_id is None else "%s:%s" % (view_id, anno_id)
 
     def _get_document(self):
         """Return the document or annotation node that the annotation/document in
@@ -173,7 +299,6 @@ class Node(object):
         # try the local property
         docid = self.properties.get('document')
         if docid is not None:
-            docid = self._adjust_identifier(docid)
             # print('>>>', docid, self.graph.get_node(docid))
             return self.graph.get_node(docid)
         # try the metadata property
@@ -181,7 +306,6 @@ class Node(object):
             try:
                 metadata = self.view.metadata.contains[self.at_type]
                 docid = metadata['document']
-                docid = self._adjust_identifier(docid)
                 return self.graph.get_node(docid)
             except KeyError:
                 return None
@@ -191,15 +315,6 @@ class Node(object):
         props = self.properties
         return "%s:%s:%s" % (self.document.identifier,
                              props['start'], props['end'])
-
-    def _adjust_identifier(self, docid):
-        """Compose the identifier if needed."""
-        if docid is None:
-            return None
-        elif ':' not in docid and docid not in self.graph.nodes:
-            return compose_id(self.view.id, docid)
-        else:
-            return docid
 
     def paths_to_docs(self):
         """Return all the paths from the node to documents."""
@@ -216,32 +331,52 @@ class Node(object):
             paths[i].extend(target._paths_to_docs())
         return paths
 
+    def summary(self):
+        """The default summary is just the identfier, this should typically be
+        overriden by sub classes."""
+        return { 'id': self.identifier }
+
+    def pp(self):
+        print(self, self.properties)
+        for target in self.targets:
+            print('   ', target)
+
 
 class TimeFrameNode(Node):
 
     def __str__(self):
-        return '<Timeframe %s:%s %s:%s %s>' % (
-            self.view.id,
-            self.properties['id'],
-            self.properties['start'],
-            self.properties['end'],
-            self.frame_type())
+        frame_type = ' ' + self.frame_type() if self.has_label() else ''
+        return ('<TimeFrameNode %s %s:%s%s>'
+                % (self.identifier, self.start(), self.end(), frame_type))
+
+    def start(self):
+        return self.properties.get('start', -1)
+
+    def end(self):
+        return self.properties.get('end', -1)
 
     def frame_type(self):
-        return self.properties.get('frameType')
+        # TODO: rename this, uses old property since replaced by "label""
+        # NOTE: this is still aloowing for the old property though
+        return self.properties.get('label') or self.properties.get('frameType')
 
-    def has_frame_type(self):
+    def has_label(self):
         return self.frame_type() is not None
 
-    def node_summary(self, full=False):
-        if self.summary is None:
-            props = self.properties
-            self.summary = { 'start': props['start'],
-                             'end': props['end'],
-                             'frameType': props['frameType'] }
-            if full:
-                self.summary['id'] = "%s:%s" % (self.view.id, props['id'])
-        return self.summary
+    def representatives(self) -> list:
+        """Return a list of the representative TimePoints."""
+        # TODO: why could I not get this from the anchors?
+        rep_ids = self.properties.get('representatives', [])
+        reps = [self.graph.get_node(rep_id) for rep_id in rep_ids]
+        return reps
+
+    def summary(self):
+        """The summary of a time frame just contains the identifier, start, end
+        and frame type."""
+        return { 'id': self.identifier,
+                 'start': self.properties['start'],
+                 'end': self.properties['end'],
+                 'frameType': self.properties.get('frameType') }
 
 
 class EntityNode(Node):
@@ -249,17 +384,21 @@ class EntityNode(Node):
     def __init__(self, graph, view, annotation):
         super().__init__(graph, view, annotation)
         self.tokens = []
+        self._paths = None
+        self._anchor = None
 
     def __str__(self):
-        return "<%s %s %s:%s %s>" \
-            % (self.at_type.shortname,
-               self.identifier,
-               self.properties['start'],
-               self.properties['end'],
-               self.properties['text'])
+        return ("<NamedEntityNode %s %s:%s %s>"
+                % (self.identifier,
+                   self.properties['start'],
+                   self.properties['end'],
+                   self.properties['text']))
 
     def start_in_video(self):
         return self.anchor()['video-start']
+
+    def end_in_video(self):
+        return self.anchor().get('video-end')
 
     def pp(self):
         print(self)
@@ -267,64 +406,81 @@ class EntityNode(Node):
         for i, p in enumerate(self.paths_to_docs()):
             print('  %s' % ' '.join([str(n) for n in p[1:]]))
 
-    def node_summary(self, full=False):
-        if self.summary is None:
-            props = self.properties
-            anchor = self.anchor()
-            if 'coordinates' in anchor:
-                anchor['coordinates'] = \
-                    ','.join(["%s:%s" % (pair[0], pair[1])
-                              for pair in anchor['coordinates']])
-            self.summary = {
-                'group': props['group'],
-                'cat': props['category'],
-                'tag': props.get('tag', 'nil'),
-                'document': self._get_document_plus_span() }
-            if full:
-                self.summary['id'] = "%s:%s" % (self.view.id, props['id'])
-            for prop in ('video-start', 'video-end', 'coordinates'):
-                if prop in anchor:
-                    self.summary[prop] = anchor[prop] 
-        return self.summary
-        
-    def as_xml(self, verbose=False):
-        props = self.properties
+    def summary(self):
+        """The summary for entities needs to include where in the video or image
+        the entity occurs, it is not enough to just give the text document."""
         anchor = self.anchor()
-        anchor_str = ''
-        if 'coordinates' in anchor:
-            anchor_str = 'video-start="%s" coor="%s"' \
-                % (anchor['start'],
-                   ','.join(["%s:%s" % (pair[0], pair[1])
-                             for pair in anchor['coordinates']]))
-        elif 'end' in anchor:
-             anchor_str = 'video-start="%s" video-end="%s"' \
-                 % (anchor['start'], anchor['end'])
-        tag = props.get('tag', 'nil')
-        if verbose:
-            return ('<Entity group="%s" id="%s:%s" doc="%s:%s"%s" cat="%s" %s />'
-                    % (props['group'], self.view.id, props['id'],
-                       self.document.identifier, props['start'], props['end'],
-                       props['category'], anchor_str))
-        else:
-            return ('<Instance group="%s" cat="%s" tag="%s" %s />'
-                    % (props['group'], props['category'], tag, anchor_str))
+        return {
+            'id': self.identifier,
+            'group': self.properties['group'],
+            'cat': self.properties['category'],
+            'tag': self.properties.get('tag'),
+            'document': self._get_document_plus_span(),
+            'video-start': anchor.get('video-start'),
+            'video-end': anchor.get('video-end'),
+            'coordinates': self._coordinates_as_string(anchor)}
 
     def anchor(self):
-        # TODO: deal with when the primary document is not a video
+        """The anchor is the position in the video that the entity is linked to.
+        This anchor cannot be found in the document property because that points
+        to a text document that was somehow derived from the video document. Some
+        graph traversal is needed to get the anchor, but we know that the anchor
+        is always a time frame or a bounding box.
+        """
+        # TODO: deal with the case where the primary document is not a video
         self.paths = self.paths_to_docs()
         bbtf = self.find_boundingbox_or_timeframe()
-        if bbtf.at_type.shortname == names.BOUNDING_BOX:
+        # for path in paths:
+        #     print('... [')
+        #     for n in path: print('     ', n)
+        # print('===', bbtf)
+        if bbtf.at_type.shortname == config.BOUNDING_BOX:
             return {'video-start': bbtf.properties['timePoint'],
                     'coordinates': bbtf.properties['coordinates']}
-        elif bbtf.at_type.shortname == names.TIME_FRAME:
+        elif bbtf.at_type.shortname == config.TIME_FRAME:
             return {'video-start': bbtf.properties['start'],
                     'video-end': bbtf.properties['end']}
+
+    def anchor2(self):
+        """The anchor is the position in the video that the entity is linked to.
+        This anchor cannot be found in the document property because that points
+        to a text document that was somehow derived from the video document. Some
+        graph traversal is needed to get the anchor, but we know that the anchor
+        is always a time frame or a bounding box.
+        """
+        # TODO: with this version you get an error that the paths variable does
+        #       not exist yet, must get a clearer picture on how to build a graph
+        #       where nodes have paths to anchors
+        # TODO: deal with the case where the primary document is not a video
+        if self._anchor is None:
+            self._paths = self.paths_to_docs()
+            bbtf = self.find_boundingbox_or_timeframe()
+            # for path in self._paths:
+            #    print('... [')
+            #    for n in path: print('     ', n)
+            # print('===', bbtf)
+            if bbtf.at_type.shortname == config.BOUNDING_BOX:
+                self._anchor = {'video-start': bbtf.properties['timePoint'],
+                                'coordinates': bbtf.properties['coordinates']}
+            elif bbtf.at_type.shortname == config.TIME_FRAME:
+                self._anchor = {'video-start': bbtf.properties['start'],
+                                'video-end': bbtf.properties['end']}
+        return self._anchor
 
     def find_boundingbox_or_timeframe(self):
         return self.paths[-1][-2]
 
+    @staticmethod
+    def _coordinates_as_string(anchor):
+        if 'coordinates' not in anchor:
+            return None
+        return ','.join(["%s:%s" % (pair[0], pair[1])
+                         for pair in anchor['coordinates']])
+
 
 class TagNode(Node):
+
+    # TODO: this is very preliminay, and not much beyond a hack
 
     def __str__(self):
         return "<%s %s %s:%s %s '%s'>" \
@@ -335,17 +491,53 @@ class TagNode(Node):
                self.properties['tagName'],
                self.properties['text'])
 
+    def summary(self):
+        #sys.stderr.write(f'>>> {self.annotation}\n')
+        return {
+            'id': self.identifier,
+            'tag': self.properties['tagName'],
+            'start': self.properties['start'],
+            'end': self.properties['end'],
+            'text': self.properties['text'],
+            'document': self.annotation.properties['document']
+        }
 
-class NodeFactory(object):
+
+class Nodes(object):
 
     """Factory class for Node creation. Use Node for creation unless a special
     class was registered for the kind of annotation we have."""
 
-    node_classes = { names.NAMED_ENTITY: EntityNode,
-                     names.SEMANTIC_TAG: TagNode,
-                     names.TIME_FRAME: TimeFrameNode }
+    node_classes = { config.NAMED_ENTITY: EntityNode,
+                     config.SEMANTIC_TAG: TagNode,
+                     config.TIME_FRAME: TimeFrameNode }
 
     @classmethod
-    def new_node(cls, graph, view, annotation):
+    def new(cls, graph, view, annotation):
         node_class = cls.node_classes.get(annotation.at_type.shortname, Node)
         return node_class(graph, view, annotation)
+
+
+
+if __name__ == '__main__':
+
+    graph = Graph(open(sys.argv[1]).read())
+    print(graph)
+    #graph.pp()
+    #graph.nodes['v_7:st12'].pp()
+    #graph.nodes['v_2:s1'].pp()
+    #graph.nodes['v_4:tf1'].pp()
+    exit()
+    for node in graph.nodes.values():
+        print(node.at_type.shortname, node.identifier, node.anchors)
+
+
+'''
+
+Printing some graphs:
+
+uv run graph.py -i examples/input-v9.mmif -e dot -f png -o examples/dot-v9-1-full -p -a -v
+uv run graph.py -i examples/input-v9.mmif -e dot -f png -o examples/dot-v9-2-no-view-links -p -a
+uv run graph.py -i examples/input-v9.mmif -e dot -f png -o examples/dot-v9-3-no-anchor-to-doc -p
+
+'''
