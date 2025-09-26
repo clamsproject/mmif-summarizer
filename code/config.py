@@ -3,14 +3,19 @@ from mmif.vocabulary import DocumentTypes
 from mmif.vocabulary import AnnotationTypes
 
 
-# The name of CLAMS applications, used to select views
+# The name of CLAMS applications, used to select views and to determine whether
+# the summarizer is appropriate for the app version.
 
 KALDI = [
+    # The first two use MMIF 0.4 and should probably be retired
     'http://apps.clams.ai/aapb-pua-kaldi-wrapper/0.2.2',
-    'http://apps.clams.ai/aapb-pua-kaldi-wrapper/0.2.3']
+    'http://apps.clams.ai/aapb-pua-kaldi-wrapper/0.2.3',
+    'http://apps.clams.ai/aapb-pua-kaldi-wrapper/v3']
 
 WHISPER = [
-    'http://apps.clams.ai/whisper-wrapper/v8']
+    'http://apps.clams.ai/whisper-wrapper/v7',
+    'http://apps.clams.ai/whisper-wrapper/v8',
+    'http://apps.clams.ai/whisper-wrapper/v8-3-g737e280']
 
 CAPTIONER = [
     'http://apps.clams.ai/llava-captioner/v1.2-6-gc824c97']

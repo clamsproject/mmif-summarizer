@@ -24,3 +24,18 @@ The graph is also very similar to the graph for Whisper:
 <img src="images/kaldi.png" height=220>
 
 Since there is no punctuation and no Sentence types, the summarizer output has everything end up in one transcript element. We could either introduce punctuation or use a semi-random way of using time signatures of tokens to create sentence-like objects. However, we are leaning towards never having the summarizer add information to the CLAMS output. 
+
+
+### Output
+
+For the summary we get all the Sentences with their start and end times and the text. Since there was no Sentence object in the MMIF file there is no identifier for the transcript segments.
+
+```json
+{
+  "start-time": 99540,
+  "end-time": 103840,
+  "text": "Here are the top news headlines today. Moscow threatened to deploy anti"
+}
+```
+
+The fact that this segment starts at the beginning of a sentence is a coincident.

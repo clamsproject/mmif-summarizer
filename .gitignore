@@ -12,6 +12,7 @@ code/examples/v9
 code/examples/dot-*
 code/examples/pipelines
 code/dot-out*
+code/out
 
 # Some uv-related files that we are not using (yet?)
 /main.py

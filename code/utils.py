@@ -112,11 +112,15 @@ class CharacterList(UserList):
     back-engineer a sentence from the text and character offsets of the tokens."""
 
     def __init__(self, n: int, char=' '):
+        self.size = n
         self.char = char
         self.data = n * [char]
 
     def __str__(self):
-        return f'<CharacterList [{self.getvalue()}]>'
+        return f'<CharacterList [{self.getvalue(0, len(self))}]>'
+
+    def __len__(self):
+        return self.size
 
     def __setitem__(self, key, value):
         try:

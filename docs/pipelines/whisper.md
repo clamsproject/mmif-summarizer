@@ -21,7 +21,7 @@ Full list of pipelines:
 
 ### Data Description
 
-For whisper-wrapper/v8.
+For whisper-wrapper/v8 and whisper-wrapper/v8-3-g737e280.
 
 Checked this on cpb-aacip-507-154dn40c26.
 
@@ -40,19 +40,18 @@ Here is a fragment in graph form. In all graphs, the document from the sources l
 
 ### Output
 
-For the summary we get all the Sentences with their start and end timepoints and some other goodies.
+For the summary we get all the Sentences with their start and end times and the text. The identifier is the identifier of the Sentence annotation in the MMIF file.
 
 ```json
 {
-  "start-time": 110860,
-  "end-time": 113560,
-  "duration": 2700,
-  "length": 48,
-  "text": "South Africa's currency, The Rant, fell sharply."
+  "id": "v_0:se_4",
+  "start-time": 98539,
+  "end-time": 101060,
+  "text": "Good evening. Here are the top news headlines"
 }
 ```
 
-Problem: the Sentences are not Sentences, instead, they are semi-random Spans that cut through sentence boundaries with abandon. Here are the first 10 sentences from the example file (well, skipping the first which was a long sequence of beeps):
+Note that the Sentences in the MMIF file are not really Sentences but are semi-random Spans that cut through sentence boundaries with abandon. Here are some sentences from an example file (with character offgsets in the entire transcript):
 
 ```
  667  702  beep, beep, beep, beep, beep, beep.
@@ -63,7 +62,6 @@ Problem: the Sentences are not Sentences, instead, they are semi-random Spans th
  950 1037  sharply. Delta Airlines is suing the FAA for negligence in the Dallas crash that killed
 1038 1128  to 135 people. More details of these stories in a moment. Jim Lehrer is away tonight. Judy
 1129 1161  Woodruff is in Washington. Judy?
-1162 1248  We focus most of the news hour tonight on AIDS, the disease that is fast becoming this
 ```
 
 Note that there is no real sentence structure, but there are still punctuation characters to work with if we chose to.

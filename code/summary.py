@@ -137,6 +137,9 @@ class Summary(object):
         self.validate()
         self.print_warnings()
 
+    def add_warning(self, warning: str):
+        self.warnings.append(warning)
+
     def validate(self):
         """Minimal validation of the input. Mostly a place holder because all it
         does now is to check how many video documents there are."""
@@ -233,12 +236,7 @@ class Transcript(object):
 
     """The transcript contains the string value from the first text document in the
     last ASR view. It issues a warning if there is more than one text document in
-    the view.
-
-    TODO: this only deals with Whisper output, should add Kaldi capabilities, which
-    requires creating sentences by just setting a length or perhaps using timepoints
-    to break the transcript at long pauses.
-    """
+    the view."""
 
     def __init__(self, summary):
         self.summary = summary
@@ -247,55 +245,89 @@ class Transcript(object):
         if view is not None:
             documents = view.get_documents()
             if len(documents) > 1:
-                summary.warnings.append(f'More than one TextDocument in ASR view {view.id}')
+                summary.add_warning(f'More than one TextDocument in ASR view {view.id}')
+            t_nodes = summary.graph.get_nodes(config.TOKEN, view_id=view.id)
             s_nodes = summary.graph.get_nodes(config.SENTENCE, view_id=view.id)
-            sentences = self.collect_targets(s_nodes)
-            sentence_ids = [n.identifier for n in s_nodes]
+            if not t_nodes:
+                return
+            if s_nodes:
+                # Whisper has Sentence nodes
+                sentences = self.collect_targets(s_nodes)
+                sentence_ids = [n.identifier for n in s_nodes]
+            else:
+                # But Kaldi does not
+                sentences = self.create_sentences(t_nodes)
+                sentence_ids = [None] * len(sentences)
             # initialize the transcripts with all blanks, most blanks will be
             # overwrite with characters from the tokens
-            transcript_size = sentences[-1][-1].properties['end']
-            transcript = CharacterList(transcript_size)
+            transcript = CharacterList(self.transcript_size(sentences))
             for s_id, s in zip(sentence_ids, sentences):
-                # back engineer the full transcript from the tokens
-                for t in s:
-                    start = t.properties['start']
-                    end = t.properties['end']
-                    word = t.properties['word']
-                    transcript.set_chars(word, start, end)
-                # get all pertinent data from the sentence
-                s_start_time = s[0].anchors['time-offsets'][0]
-                s_end_time = s[-1].anchors['time-offsets'][1]
-                s_start_offset = s[0].properties['start']
-                s_end_offset = s[-1].properties['end']
-                text = transcript.getvalue(s_start_offset, s_end_offset)
-                # ... and add them to the summary data
-                sentence_data = {
-                    "id": s_id,
-                    "start-time": s_start_time,
-                    "end-time": s_end_time,
-                    "duration": s_end_time - s_start_time,
-                    "length": len(text),
-                    "text": text }
-                self.data.append(sentence_data)
-            #print(transcript_size, transcript.getvalue(0, transcript_size))
+                transcript_element = TranscriptElement(s_id, s, transcript)
+                self.data.append(transcript_element.as_json())
 
     def __str__(self):
         return str(self.data)
 
-    def collect_targets(self, nodes):
+    @staticmethod
+    def transcript_size(sentences):
+        try:
+            return sentences[-1][-1].properties['end']
+        except IndexError:
+            return 0
+
+    def collect_targets(self, s_nodes):
         """For each node (in this context a sentence node), collect all target nodes
-        (which are tokens) and return them as a list of list, one list for each node.
-        """
+        (which are tokens) and return them as a list of lists, with one list for each
+        node."""
         targets = []
-        for node in nodes:
+        for node in s_nodes:
             node_target_ids = node.properties['targets']
             node_targets = [self.summary.graph.get_node(stid) for stid in node_target_ids]
             targets.append(node_targets)
         return targets
 
-    def pp(self):
-        print('\nTranscript -> ')
-        print('    %s' % self.data[:80].replace('\n', ' '))
+    def create_sentences(self, t_nodes, sentence_size=12):
+        """If there is no sentence structure then we create it just by chopping th
+        input into slices of some pre-determined length."""
+        # TODO: perhaps the size paramater should be set in the config file or via a
+        # command line option.
+        return [t_nodes[i:i + sentence_size]
+                for i in range(0, len(t_nodes), sentence_size)]
+
+
+class TranscriptElement:
+
+    """Utility class to handle data associated with an element from a transcript,
+    which is created from a sentence which is a list of Token Nodes. Initialization
+    has the side effect of populating the full transcript which is an instance of
+    CharacterList and which is also accessed here."""
+
+    def __init__(self, identifier: str, sentence: list, transcript: CharacterList):
+        for t in sentence:
+            # this adds the current token to the transcript
+            start = t.properties['start']
+            end = t.properties['end']
+            word = t.properties['word']
+            transcript.set_chars(word, start, end)
+        self.id = identifier
+        self.start = sentence[0].anchors['time-offsets'][0]
+        self.end = sentence[-1].anchors['time-offsets'][1]
+        self.start_offset = sentence[0].properties['start']
+        self.end_offset = sentence[-1].properties['end']
+        self.text = transcript.getvalue(self.start_offset, self.end_offset)
+
+    def __str__(self):
+        text = self.text if len(self.text) <= 50 else self.text[:50] + '...'
+        return f'<TranscriptElement {self.id} {self.start} {self.end}  "{text}">'
+
+    def as_json(self):
+        json_obj = {
+            "start-time": self.start,
+            "end-time": self.end,
+            "text": self.text }
+        if self.id is not None:
+            json_obj["id"] = self.id
+        return json_obj
 
 
 class Nodes(object):
