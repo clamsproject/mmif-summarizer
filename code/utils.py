@@ -217,19 +217,22 @@ def print_path(p):
 
 def normalize_id(doc_ids: list, view: 'View', annotation: 'Annotation'):
     """Change identifiers to include the view identifier if it wasn't included,
-    do nothing otherwise. This applies to the Annotation id, target, source and
-    target properties. Not that timePoint is not included because the value is
-    an integer and not an identifier."""
+    do nothing otherwise. This applies to the Annotation id, target, source,
+    document, targets and representatives properties. Note that timePoint is
+    not included because the value is an integer and not an identifier."""
+    # TODO: this seems somewhat fragile
     debug = False
-    #if annotation.id == 'al_1':
-    #    debug = True
-    #    print('>>>', annotation)
     attype = annotation.at_type.shortname
     props = annotation.properties
     if ':' not in annotation.id and view is not None:
         if annotation.id not in doc_ids:
             newid = f'{view.id}:{annotation.id}'
             annotation.properties['id'] = newid
+    if 'document' in props:
+        doc_id = props['document']
+        if ':' not in doc_id and view is not None:
+            if doc_id not in doc_ids:
+                props['document'] = f'{view.id}:{doc_id}'
     if 'targets' in props:
         new_targets = []
         for target in props['targets']:
@@ -239,6 +242,14 @@ def normalize_id(doc_ids: list, view: 'View', annotation: 'Annotation'):
             else:
                 new_targets.append(target)
         props['targets'] = new_targets
+    if 'representatives' in props:
+        new_representatives = []
+        for rep in props['representatives']:
+            if ':' not in rep and view is not None:
+                new_representatives.append(f'{view.id}:{rep}')
+            else:
+                new_representatives.append(rep)
+        props['representatives'] = new_representatives
     if attype == 'Alignment':
         if ':' not in props['source'] and view is not None:
             if props['source'] not in doc_ids:

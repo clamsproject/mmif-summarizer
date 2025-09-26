@@ -1,3 +1,11 @@
+[ [developer notes](../developer-notes.md)
+| [whisper](whisper.md)
+| [kaldi](kaldi.md)
+| SWT-DocTR
+| [SWT-Llava](swt-llava.md)
+| [spaCy](spacy.md)
+]
+
 ## SWT ⟹ DocTR
 
 ### swt-detection-v5.1--doctr-wrapper-v1.1
@@ -33,3 +41,41 @@ Below is an illustration of this for just one TextDocument in the example docume
 <img src="images/swt-doctr.png" height=430>
 
 What is not shown in the image is that all paragraphs, sentences and tokens have the document property set to td\_1. That is not always the case, there are many more Paragraphs, Sentence and Tokens that point to other TextDocuments.
+
+
+### Output
+
+At the moment there is no output from the summarizer for DocTR data because it is unlikely to be of use for the end user. it is hard to determine what parts would be useful and when putting in everything this would not be much of a summary. 
+
+However, it is possible that end users would like to see DocTR results in a slightly more digestible format, and if that format is not a nice visualization (the best option) then it could look as follows (this is a made-up example for one textdocument associated with a timepoint, with one paragraph with one sentence with one token):
+
+```json
+[
+  {
+    "doc_id": "v2:td_1",
+    "timePoint": 1284,
+    "text": "...",
+    "paragraphs": [
+      {
+        "par_id": "v2:pa_1",
+        "coordinates": [[12, 432], [54, 856]],
+        "text": "...",
+        "sentences": [
+          {
+            "sent_id": "v2:se_1",
+            "coordinates": [...],
+            "text": "...",
+            "tokens": [
+              {
+                "tok_id": "v2:to_1",
+                "coordinates": [...],
+                "text": "..."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
+```

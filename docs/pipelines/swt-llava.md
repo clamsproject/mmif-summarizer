@@ -1,3 +1,12 @@
+[ [developer notes](../developer-notes.md)
+| [whisper](whisper.md)
+| [kaldi](kaldi.md)
+| [SWT-DocTR](swt-doctr.md)
+| SWT-Llava
+| [spaCy](spacy.md)
+]
+
+
 ## SWT ⟹ Llava
 
 
@@ -6,6 +15,8 @@
 Checked with cpb-aacip-225-12z34w2c.
 
 Using this both for SWT/TimeFrames testing and Llava testing
+
+The options that make the most sense here are --captions and --timeframes, although the latter may give you many more time frames then just the ones that were captioned.
 
 
 ### Data description
@@ -21,12 +32,12 @@ Here is a graph with just one TimePoint, one TimeFrame and one added TextDocumen
 
 <img src="images/swt-llava.png" height=100>
 
-For td\_1, the caption is in the text value.
+For v_2:td\_1, the caption is in the text value.
 
 
 ### Output
 
-For the timeframes **summary** we get the basics (at the moment not including the identifier of the representative time points):
+For the timeframes **summary** we get the basics:
 
 ```json
 {
@@ -48,7 +59,3 @@ For the captions **summary** we grab the time point of the representative and th
   "text": "\nCHARLES STUBBLEFIELD HAWAII PUNL!"
 }
 ```
-
-The identifier of the TextDocument is also listed here (which we did not do for the transcript), this is an illustration that we can easily do this if it is useful to have a backtrace to the MMIF file.
-
-

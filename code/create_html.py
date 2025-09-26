@@ -117,7 +117,7 @@ def create_html(infile: str, outdir: str):
     if 'captions' in summary:
         add_index_link(page, summary, 'captions', captions_page)
         create_html_captions(infile, outpath, summary)
-        page.write_to_file()
+    page.write_to_file()
 
 
 def add_index_link(page, summary, summary_part, part_page):

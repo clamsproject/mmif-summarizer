@@ -16,11 +16,11 @@ python summary.py --full \
 
 python summary.py --full \
     -i examples/pipelines/whisper-wrapper-v8/cpb-aacip-507-154dn40c26.mmif \
-    -o examples/pipelines/whisper-wrapper-v8/cpb-aacip-507-154dn40c26.bis.json
+    -o examples/pipelines/whisper-wrapper-v8/cpb-aacip-507-154dn40c26.json
 
 python create_html.py \
-    examples/pipelines/whisper-wrapper-v8/cpb-aacip-507-154dn40c26.bis.json \
-    examples/pipelines/whisper-wrapper-v8/pages-bis
+    examples/pipelines/whisper-wrapper-v8/cpb-aacip-507-154dn40c26.json \
+    examples/pipelines/whisper-wrapper-v8/pages
 
 # v8 smaller file
 
@@ -36,7 +36,7 @@ python create_html.py \
 
 python summary.py --full \
     -i examples/pipelines/whisper-wrapper-v8-3-g737e280/cpb-aacip-507-154dn40c26.mmif \
-    -o examples/pipelines/whisper-wrapper-v8-3-g737e280/cpb-aacip-507-154dn40c26.bis.json
+    -o examples/pipelines/whisper-wrapper-v8-3-g737e280/cpb-aacip-507-154dn40c26.json
 
 python create_html.py \
     examples/pipelines/whisper-wrapper-v8-3-g737e280/cpb-aacip-507-154dn40c26.json \
@@ -57,6 +57,34 @@ python create_html.py \
 python summary.py --full \
     -i examples/pipelines/aapb-pua-kaldi-wrapper-0.2.2/example-kaldi-output-pretty.mmif \
     -o examples/pipelines/aapb-pua-kaldi-wrapper-0.2.2/example-kaldi-output-pretty.bis.json
+
+
+## TimeFrames
+## --------------------------------------------------------------------------------------
+
+# Should get some more recent SWT output.
+
+# Testing on the output of the swt-detection/v5.1 + doctr-wrapper/v1.1 pipeline output.
+
+# This fails when creating the Graph object, probably related to issues with the DocTR data
+
+python summary.py --timeframes \
+    -i examples/pipelines/swt-detection-v5.1--doctr-wrapper-v1.1/cpb-aacip-526-z60bv7c69m.mmif \
+    -o examples/pipelines/swt-detection-v5.1--doctr-wrapper-v1.1/cpb-aacip-526-z60bv7c69m.json
+
+python create_html.py \
+    examples/pipelines/swt-detection-v5.1--doctr-wrapper-v1.1/cpb-aacip-526-z60bv7c69m.json \
+    examples/pipelines/swt-detection-v5.1--doctr-wrapper-v1.1/pages
+
+# Testing on the output of the swt-detection/v5.1
+
+python summary.py --timeframes \
+    -i examples/pipelines/swt-detection-v5.1/cpb-aacip-526-z60bv7c69m.mmif \
+    -o examples/pipelines/swt-detection-v5.1/cpb-aacip-526-z60bv7c69m.json
+
+python create_html.py \
+    examples/pipelines/swt-detection-v5.1/cpb-aacip-526-z60bv7c69m.json \
+    examples/pipelines/swt-detection-v5.1/pages
 
 
 
