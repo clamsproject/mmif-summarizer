@@ -7,9 +7,9 @@ from pathlib import Path
 from xml.sax.saxutils import quoteattr, escape
 from collections import UserList
 
-from config import KALDI, WHISPER, CAPTIONER, SEGMENTER
-from config import TOKEN, ALIGNMENT, TIME_FRAME
-from config import GRAPH_FORMATTING
+from summarizer.config import KALDI, WHISPER, CAPTIONER, SEGMENTER
+from summarizer.config import TOKEN, ALIGNMENT, TIME_FRAME
+from summarizer.config import GRAPH_FORMATTING
 
 
 def compose_id(view_id, anno_id):

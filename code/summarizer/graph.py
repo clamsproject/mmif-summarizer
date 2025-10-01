@@ -4,13 +4,11 @@ from operator import itemgetter
 from pathlib import Path
 import argparse
 
-import graphviz
-
 from mmif import Mmif
 
-import config
-from utils import compose_id, flatten_paths, normalize_id
-from utils import get_shape_and_color, get_view_label, get_label
+from summarizer import config
+from summarizer.utils import compose_id, flatten_paths, normalize_id
+from summarizer.utils import get_shape_and_color, get_view_label, get_label
 
 
 class Graph(object):

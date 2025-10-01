@@ -86,11 +86,11 @@ from collections import defaultdict
 from mmif.serialize import Mmif
 from mmif.vocabulary import DocumentTypes
 
-from utils import CharacterList
-from utils import get_aligned_tokens
-from utils import get_transcript_view, get_last_segmenter_view, get_captions_view
-from graph import Graph
-import config
+from summarizer.utils import CharacterList
+from summarizer.utils import get_aligned_tokens
+from summarizer.utils import get_transcript_view, get_last_segmenter_view, get_captions_view
+from summarizer.graph import Graph
+from summarizer import config
 
 
 VERSION = '0.2.0'
