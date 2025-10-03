@@ -2,8 +2,11 @@
 .DS_Store
 __pycache__
 .idea
-venv
+.venv
+venv*
 *.mmif
+
+dist
 
 # Personal scratch files and output files
 backup.sh
@@ -15,7 +18,5 @@ code/dot-out*
 code/out
 
 # Some uv-related files that we are not using (yet?)
-/main.py
-/.python-version
-/pyproject.toml
-/uv.lock
+code/.python-version
+code/uv.lock

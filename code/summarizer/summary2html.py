@@ -9,7 +9,7 @@ import sys
 import json
 import pathlib
 
-import utils
+from summarizer import utils
 
 
 # Pages for the mini-web site
@@ -96,6 +96,12 @@ td {
 
 </style>
 '''
+
+
+
+def main():
+    infile, outdir = sys.argv[1:3]
+    create_html(infile, outdir)
 
 
 def create_html(infile: str, outdir: str):
@@ -214,9 +220,3 @@ class Html:
 
     def write_to_file(self):
         self.path.write_text(self.stream.getvalue())
-
-
-if __name__ == '__main__':
-
-    infile, outdir = sys.argv[1:3]
-    create_html(infile, outdir)
