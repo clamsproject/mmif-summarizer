@@ -2,129 +2,68 @@
 
 Code to create a summary of an MMIF file, only keeping those annotations that are useful metadata (and reducing the size of the file by one or two orders of magnitude), and making some implicit relations between annotations and anchors in the source explicit.
 
-See `code/summary.py` for some of the limitations of the code.
-
-This code requries Python 3.8 or higher and the clams-python module:
+This code requries Python 3.10 or higher and the clams-python module:
 
 ```bash
-$ pip install clams-python==0.5.3
+$ pip install clams-python>=1.1.3
 ```
+
+To run properly it requires MMIF files from version 1.0.0 or higher. There are no plans to make older MMIF files palatable to the summarizer.
+
+The summarizer can generate a JSON summary as well as a mini website from the summary. See [docs/output/index.md](docs/output/index.md) for a description of the output. One of the perks of the summarizer is that errors in the MMIF file are made more obvious, the output description has an example of that. 
+
+
 
 ## Usage
 
-Run the summarizer in stand-alone mode on one of the sample input documents and print a JSON summary:
+The summarizer is implemented as a Python package. If you have installed the package you have access to the summarize and create-html command utilities, but the package also comes with `run_summarizer.py` and `run_html.py` scripts that call the package.
+
+The summarizer creates a JSON summary, which can then be turned into a mini webpage. After installing the module you can run the code as follows:
+
+```bash
+$ summarize --full -i MMIF_FILE -o JSON_FILE
+$ create-html JSON_FILE HTML_DIR
+```
+
+For development you can run the code from this repository using the run scripts:
 
 ```bash
 $ cd code
-$ python summary.py examples/input-v7.mmif
+$ python run_summarizer.py --full -i MMIF_FILE -o JSON_FILE
+$ python run_html.py JSON_FILE HTML_DIR
 ```
 
-The output for this should be something like
 
-```json
-{
-  "mmif_version": "http://mmif.clams.ai/0.4.0",
-  "documents": [
-    {
-      "id": "m1",
-      "type": "VideoDocument",
-      "location": "file:///var/archive/video-002.mp4"
-    }
-  ]
-}
-```
+For all options, see `code/summarizer/summary.py` and [code/summarizer/README.md](code/summarizer/README.md). The latter is what is published on PyPI.
 
-The default is to just print the MMIF version and the list of documents, and ignore all information in the views. You can however print all kinds of other information for which the following options are available:
 
-| option        | description                                                        |
-| ------------- | ------------------------------------------------------------------ |
-| --views       | print the metadata for all views                                   |
-| --transcript  | print the transcript, with alignments if available                 |
-| --barsandtone | print the timeframe that was recognized as the bars-and-tone frame |
-| --segments    | print the timeframes recognized by the segmenter                   |
-| --slate       | print information from the slate timeframe                         |
-| --chyrons     | print information from chyrons (lower-thirds)                      |
-| --credits     | print information from the credits                                 |
-| --entities    | print the entities from the transcript                             |
-| --full        | print all data                                                     |
+## Publishing
 
-For example:
+This is the short version, for more details see [docs/publishing.md](docs/publishing.md).
+
+It is best to use a clean virtual environment with recent versions of build and twine:
 
 ```bash
-$ python summary.py examples/input-v7.mmif --barsandtone
+$ pip install build==1.3.0 twine==6.2.0
 ```
 
-```json
-{
-  "mmif_version": "http://mmif.clams.ai/0.4.0",
-  "documents": [
-    {
-      "id": "m1",
-      "type": "VideoDocument",
-      "location": "file:///var/archive/video-002.mp4"
-    }
-  ],
-  "bars-and-tone": [
-    {
-      "id": "v_1:s1",
-      "start": 0,
-      "end": 2600,
-      "frameType": "bars-and-tone"
-    }
-  ]
-}
-```
-
-> Not all options are fully implemented yet. In particular: (1) for slates the tool currently only prints the timeframe, not the information contained in it, (2) chyrons and credits are not implemented, and (3) entities are implemented, but need to be revamped. Also missing are some sanity checks that alert the user to overly complicated MMIF input, for example with many layers of the same kind.
-
-If you want XML output (which tends to be a little bit more compact) you can run `json2xml.py` over the output.
-
-
-### Running a Flask server
-
-To start a Flask server:
+You build from the `code` directory:
 
 ```bash
-$ python app.py
+$ python -m build
 ```
 
-To use the server from curl (do this from a different terminal than the run.py script, but from the directory with this readme file):
+To upload to TextPyPI (you will need a PyPI token):
 
 ```bash
-$ curl -X GET http://0.0.0.0:5000/
-$ curl --request POST -d@examples/input-v7.mmif http://0.0.0.0:5000/
+$ twine upload --repository testpypi dist/*
 ```
 
-The first gets you the metadata for the summarizer, the second sends off the file `examples/input-v7.mmif` to get summarized. To add options simply add them to the url. For example to print the transcript and the segments you can do
-
-```bash
-$ curl --request POST -d@examples/input-v7.mmif 'http://0.0.0.0:5000?segments&transcript'
-```
-
-Note that with more than one parameter you need to add quotes around the URL.
+You can see this package at [https://test.pypi.org/project/summarizer-mv/](https://test.pypi.org/project/summarizer-mv/).
 
 
-## Docker
+## Some history
 
-Building the image (use any name of your liking for the tag):
+This repository was originally intended for creating a CLAMS summarizer app, but the current thinking is to add a summarize utility to the mmif-python utilities at [https://github.com/clamsproject/mmif-python/tree/develop/mmif/utils](https://github.com/clamsproject/mmif-python/tree/develop/mmif/utils).
 
-```bash
-$ cd code
-$ docker build --tag mmif-summarizer .
-```
-
-Entering the container and testing the converter:
-
-```bash
-$ docker run --rm -it mmif-summarizer bash
-$ python summary.py examples/input-v7.mmif
-```
-
-In real life, the second prompt will be the container prompt, something like `root@f9deb9a6115f:/app#`.
-
-To run the Flask server in a Docker container:
-
-```bash
-$ docker run --rm -d -p 5000:5000 mmif-summarizer
-$ curl --request POST -d@examples/input-v7.mmif http://0.0.0.0:5000/
-```
+As a result, this repository will probably eventually be archived, but for now it will remain until the summarizer code has been ported (and other utilities in here have found a home if appropriate).

@@ -9,7 +9,7 @@ import sys
 import json
 import pathlib
 
-import utils
+from summarizer import utils
 
 
 # Pages for the mini-web site
@@ -98,6 +98,12 @@ td {
 '''
 
 
+
+def main():
+    infile, outdir = sys.argv[1:3]
+    create_html(infile, outdir)
+
+
 def create_html(infile: str, outdir: str):
     outpath = pathlib.Path(outdir)
     outpath.mkdir(exist_ok=True)
@@ -117,7 +123,7 @@ def create_html(infile: str, outdir: str):
     if 'captions' in summary:
         add_index_link(page, summary, 'captions', captions_page)
         create_html_captions(infile, outpath, summary)
-        page.write_to_file()
+    page.write_to_file()
 
 
 def add_index_link(page, summary, summary_part, part_page):
@@ -214,9 +220,3 @@ class Html:
 
     def write_to_file(self):
         self.path.write_text(self.stream.getvalue())
-
-
-if __name__ == '__main__':
-
-    infile, outdir = sys.argv[1:3]
-    create_html(infile, outdir)

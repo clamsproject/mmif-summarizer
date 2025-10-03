@@ -4,13 +4,11 @@ from operator import itemgetter
 from pathlib import Path
 import argparse
 
-import graphviz
-
 from mmif import Mmif
 
-import config
-from utils import compose_id, flatten_paths, normalize_id
-from utils import get_shape_and_color, get_view_label, get_label
+from summarizer import config
+from summarizer.utils import compose_id, flatten_paths, normalize_id
+from summarizer.utils import get_shape_and_color, get_view_label, get_label
 
 
 class Graph(object):
@@ -273,13 +271,25 @@ class Node(object):
             #print(source_attype, self.anchors)
         elif source_attype == 'TimeFrame' and target_attype == 'Token':
             pass
-        # TODO: check whether some action is needed for the next two
+        # TODO: check whether some action is needed for the next options
         elif source_attype == 'TextDocument' and target_attype == 'VideoDocument':
             pass
         elif source_attype == 'VideoDocument' and target_attype == 'TextDocument':
             pass
+        elif source_attype == 'BoundingBox' and target_attype == 'TimePoint':
+            pass
+        elif source_attype =='TimePoint' and target_attype == 'BoundingBox':
+            pass
+        elif source_attype == 'BoundingBox' and target_attype in ('Token', 'Sentence', 'Paragraph'):
+            pass
+        elif source_attype in ('Token', 'Sentence', 'Paragraph') and target_attype == 'BoundingBox':
+            pass
+        elif source_attype == 'TextDocument' and target_attype == 'TimePoint':
+            pass
+        elif source_attype == 'TimePoint' and target_attype == 'TextDocument':
+            pass
         else:
-            print('-', attype1, target_attype)
+            print('-', source_attype, target_attype)
         if debug:
             print('>>>', self.anchors)
 
@@ -337,9 +347,14 @@ class Node(object):
         return { 'id': self.identifier }
 
     def pp(self):
-        print(self, self.properties)
+        print('-' * 80)
+        print(self)
+        for prop in self.properties:
+            print(f'  {prop} = {self.properties[prop]}')
+        print('  targets = ')
         for target in self.targets:
             print('   ', target)
+        print('-' * 80)
 
 
 class TimeFrameNode(Node):
@@ -478,38 +493,12 @@ class EntityNode(Node):
                          for pair in anchor['coordinates']])
 
 
-class TagNode(Node):
-
-    # TODO: this is very preliminay, and not much beyond a hack
-
-    def __str__(self):
-        return "<%s %s %s:%s %s '%s'>" \
-            % (self.at_type.shortname,
-               self.identifier,
-               self.properties['start'],
-               self.properties['end'],
-               self.properties['tagName'],
-               self.properties['text'])
-
-    def summary(self):
-        #sys.stderr.write(f'>>> {self.annotation}\n')
-        return {
-            'id': self.identifier,
-            'tag': self.properties['tagName'],
-            'start': self.properties['start'],
-            'end': self.properties['end'],
-            'text': self.properties['text'],
-            'document': self.annotation.properties['document']
-        }
-
-
 class Nodes(object):
 
     """Factory class for Node creation. Use Node for creation unless a special
     class was registered for the kind of annotation we have."""
 
     node_classes = { config.NAMED_ENTITY: EntityNode,
-                     config.SEMANTIC_TAG: TagNode,
                      config.TIME_FRAME: TimeFrameNode }
 
     @classmethod

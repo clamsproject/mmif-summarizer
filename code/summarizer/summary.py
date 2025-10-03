@@ -20,10 +20,22 @@ USAGE:
 
 Example:
 
-    $ python summary -i input.mmif -o output.json --views --transcript
+    $ python summary -i input.mmif -o output.json --transcript
 
-    Reads input.mmif and creates output.json with just views and transcript
-    information added to the documents list.
+    Reads input.mmif and creates output.json with just transcript
+    information added to the documents list and the views.
+
+In all cases, the summarizer will summarize what is there and use the information
+that is there, if the output of CLAMS is bad, then the results of the summarizer
+will be bad (although it may hide a lot of the badness). In some rare cases some
+information is added. For example if the ASR tool does not group tokens then the
+summarizer will do that, but then only by simply grouping in equal chunks and not
+trying to infer sentence-like groupings.
+
+The summary always includes the MMIF version, the list of documents and a summary
+of the metadata of all views (identifier, CLAMS app, timestamp, total number of
+annotations and number of annotations per type, it does not show parameters and
+application configuration).
 
 
 OPTIONS:
@@ -38,27 +50,16 @@ Run the summarizer over all MMIF files in the directory, input files are assumed
 have the .mmif extension and output files will be written in the same directory with
 the .json extension.
 
---views
-
-Shows basic information from the views: identifier, CLAMS app, timestamp, total
-number of annotations and number of annotations per type.
-
-Does NOT show parameters and application configuration.
-
 -- timeframes
 
 Shows basic information of all timeframes.
 
-At the moment this does not group the timeframes accoring to apps. There used to be
-settings to just get chyrons or segments or barsandtone frames, but those has been 
-retired.
+This does not group the timeframes according to apps. There used to be settings to
+just get chyrons or segments or bars-and-tone frames, but those have been retired.
 
 --transcript
 
-Shows the text from the transcript in pseudo sentences. Currently the sentences are
-determined by splitting on end-of-sentence punctuations, which does result in bad
-breaks after abbreviations. There are also stretches with barely any punctuation
-which gives rise to long run-on sentence.
+Shows the text from the transcript in pseudo sentences.
 
 The transcript is taken from the last non-warning ASR view, so only the last added
 transcript will be summarized. It is assumed that Tokens in the view are ordered on
@@ -69,17 +70,13 @@ text occurrence.
 Shows captions from the Llava captioner app.
 
 
-
 TODO:
 
 - For the time unit we should really update get_start(), get_end() and other methods.
-- Add parameters and appConfiguration to the views. Maybe use an options for this.
-- Whsiper sometimes throws out very long sentences with little or no punctuation, and
-  Kaldi consistently does the same in version 0.2.2 and 0.2.3. Look into using long
-  pauses to split the text. Also check whether the Sentence instances provide better
-  data.
-- Keep all the view metadata, or add an option to do that.
-
+- Add parameters and appConfiguration to the views. Maybe use an option for this.
+- Keep all the view metadata (including parameters and appConfiguration), or add an
+  option to do that.
+- Print warnings in the summary.
 
 """
 
@@ -89,11 +86,11 @@ from collections import defaultdict
 from mmif.serialize import Mmif
 from mmif.vocabulary import DocumentTypes
 
-from utils import CharacterList
-from utils import get_aligned_tokens
-from utils import get_transcript_view, get_last_segmenter_view, get_captions_view
-from graph import Graph
-import config
+from summarizer.utils import CharacterList
+from summarizer.utils import get_aligned_tokens
+from summarizer.utils import get_transcript_view, get_last_segmenter_view, get_captions_view
+from summarizer.graph import Graph
+from summarizer import config
 
 
 VERSION = '0.2.0'
@@ -117,7 +114,6 @@ class Summary(object):
     documents       -  instance of Documents
     views           -  instance of Views
     transcript      -  instance of Transcript
-    tags            -  instance of Tags
     timeframes      -  instance of TimeFrames
     entities        -  instance of Entities
     captions        -  instance of Captions
@@ -149,13 +145,12 @@ class Summary(object):
     def video_documents(self):
         return self.mmif.get_documents_by_type(DocumentTypes.VideoDocument)
 
-    def report(self, outfile=None, full=False, views=False, timeframes=False,
+    def report(self, outfile=None, full=False, timeframes=False,
                transcript=False, captions=False, entities=False):
         json_obj = {
             'mmif_version': self.mmif.metadata.mmif,
-            'documents': self.documents.data}
-        if views or full:
-            json_obj['views'] = self.views.data
+            'documents': self.documents.data,
+            'views': self.views.data}
         if transcript or full:
             json_obj['transcript'] = self.transcript.data
         if captions or full:
@@ -386,7 +381,6 @@ class TimeFrames(Nodes):
     def as_json(self):
         timeframes = defaultdict(list)
         for tf in self.nodes:
-            #print(f'>>> {tf}\n--- {tf.properties}\n--- {tf.anchors.keys()}')
             label = tf.frame_type()
             try:
                 start, end = tf.anchors['time-offsets']
@@ -617,7 +611,7 @@ if __name__ == '__main__':
                 json_file = str(mmif_file)[:-4] + 'json'
                 mmif_summary = Summary(mmif_file.read_text())
                 mmif_summary.report(
-                    outfile=json_file, full=args.full, views=args.views,
+                    outfile=json_file, full=args.full,
                     timeframes=args.timeframes, transcript=args.transcript,
                     captions=args.captions, entities=args.entities)
     elif args.i and args.o:
@@ -625,6 +619,6 @@ if __name__ == '__main__':
             mmif_text = fh.read()
             mmif_summary = Summary(mmif_text)
             mmif_summary.report(
-                outfile=args.o, full=args.full, views=args.views,
+                outfile=args.o, full=args.full,
                 timeframes=args.timeframes, transcript=args.transcript,
                 captions=args.captions, entities=args.entities)

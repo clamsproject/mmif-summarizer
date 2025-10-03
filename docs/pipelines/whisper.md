@@ -18,6 +18,8 @@ Full list of pipelines:
 - whisper-wrapper/v8
 - whisper-wrapper/v8-3-g737e280
 
+For Whisper output, you typically only want to use the --views and --transcript options. When using --full or --timeframes you get a rather uninformative
+
 
 ### Data Description
 
