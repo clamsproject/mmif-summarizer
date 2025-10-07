@@ -14,7 +14,7 @@ def argparser():
     parser.add_argument('--transcript', action='store_true', help='print transcript')
     parser.add_argument('--captions', action='store_true', help='print Llava captions')
     parser.add_argument('--timeframes', action='store_true', help='print all time frames')
-    #parser.add_argument('--entities', action='store_true', help='print entities from transcript')
+    parser.add_argument('--entities', action='store_true', help='print entities from transcript')
     return parser
 
 

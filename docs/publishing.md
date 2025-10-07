@@ -242,15 +242,18 @@ But that way is now deprecated.
 
 ### Adding images to the description
 
-I tried this by adding an image at the same level as the description file and link to it from the description file. The problem is that this cannot be relative link. So instead save the image somewhere else in the repo (not in the package code) so it does not clog up the package and then link to it with an absolute path
+I tried this by adding an image at the same level as the description file and link to it from the description file. The problem is that this cannot be relative link. So instead save the image somewhere else in the repo (not in the package code so it does not clog up the package) and then link to it with an absolute path. To get the image's raw link on GitHub, right-click the image and choose "Copy image address". See [https://glasnt.com/blog/new-images/](https://glasnt.com/blog/new-images/) and [how-do-i-add-images-to-a-pypi-readme-that-works-on-github](https://stackoverflow.com/questions/41983209/how-do-i-add-images-to-a-pypi-readme-that-works-on-github) on stackoverflow.
+
+The right-cliking does not work really, but here is the general recipe for the image name:
 
 ```
-![sparkles](https://raw.githubusercontent.com/glasnt/pypi-image-example/latest/static/sparkles.png)
+https://raw.githubusercontent.com/<github_username>/<repository_name>/<branch_name>/<image_name>
 ```
 
-To get the image's raw link on GitHub, right-click the image and choose Copy image address. 
+For example de URL [https://raw.githubusercontent.com/clamsproject/mmif-summarizer/main/docs/output/page-timeframes.png](https://raw.githubusercontent.com/clamsproject/mmif-summarizer/main/docs/output/page-timeframes.png) is used for the image below.
 
-See [https://glasnt.com/blog/new-images/](https://glasnt.com/blog/new-images/) and [how-do-i-add-images-to-a-pypi-readme-that-works-on-github](https://stackoverflow.com/questions/41983209/how-do-i-add-images-to-a-pypi-readme-that-works-on-github) on stackoverflow.
+<img src="https://raw.githubusercontent.com/clamsproject/mmif-summarizer/main/docs/output/page-timeframes.png" width= 300 border=1>
+
 
 
 ### Quicker testing with uv
@@ -271,7 +274,7 @@ $ uv add --reinstall --default-index https://test.pypi.org/simple/ --index https
 $ uv run summarize
 ```
 
-The rest of this section give a more verbose elaboration of the above.
+The rest of this section elaborates on the above.
 
 After you set up your project (going for 3.10 since that is still the CLAMS default), you have a project file with just some project metadata: name, version, description, readme, requires-python and an empty dependencies list.
 

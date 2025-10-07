@@ -5,10 +5,10 @@ This is a prototype version that will only be offered via TestPyPI.
 
 ### Installation
 
-Don't believe what it says in the header, it may give errors. The following seems to be more robust:
+Don't believe what it says in the header, it will give errors because the clams-python dependency is not in TestPyPI. Instead do this:
 
 ```bash
-$ python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ summarizer-mv
+$ pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ summarizer-mv
 ```
 
 To run properly it requires MMIF files from version 1.0.0 or higher.
