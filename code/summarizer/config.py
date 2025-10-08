@@ -5,6 +5,8 @@ from mmif.vocabulary import AnnotationTypes
 
 # The name of CLAMS applications, used to select views and to determine whether
 # the summarizer is appropriate for the app version.
+# TODO: this now requires an exhaustive listing of all allowed apps and their
+# versions, we need a more maintainable system.
 
 KALDI = [
     # The first two use MMIF 0.4 and should probably be retired
@@ -18,7 +20,8 @@ WHISPER = [
     'http://apps.clams.ai/whisper-wrapper/v8-3-g737e280']
 
 CAPTIONER = [
-    'http://apps.clams.ai/llava-captioner/v1.2-6-gc824c97']
+    'http://apps.clams.ai/llava-captioner/v1.2-6-gc824c97',
+    'http://apps.clams.ai/smolvlm2-captioner']
 
 SEGMENTER = 'http://apps.clams.ai/audio-segmenter'
 

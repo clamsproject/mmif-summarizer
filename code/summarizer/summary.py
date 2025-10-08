@@ -497,6 +497,9 @@ class Captions(Nodes):
         if view is not None:
             for doc in self.graph.get_nodes(config.TEXT_DOCUMENT, view_id=view.id):
                 text = doc.properties['text']['@value'].split('[/INST]')[-1]
+                #print(doc)
+                #print(text)
+                #print(doc.anchors)
                 p1, p2 = doc.anchors['time-offsets']
                 if 'representatives' in doc.anchors:
                     tp_id = doc.anchors["representatives"][0]

@@ -36,7 +36,7 @@ def get_transcript_view(views):
 
 
 def get_captions_view(views):
-    """Return the last view created by the Llava captioner."""
+    """Return the last view created by the a captioner."""
     for view in reversed(views):
         if view.metadata.app in CAPTIONER:
             if view.metadata.warnings:
@@ -335,7 +335,7 @@ def get_label(view: 'mmif.View', annotation: 'mmif.Annotation'):
         return f'{view_id} BB\n{str(props.get("timePoint"))}'
     elif at_type == 'SemanticTag':
         return f'{view_id} Tag\n{props.get("tagName")}'
-    print(annotation, props)
+    #print(annotation, props)
     return f'{view_id}\n{annotation.id.replace(":", "_")}'
 
 

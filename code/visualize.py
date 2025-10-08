@@ -57,8 +57,10 @@ import argparse
 import graphviz
 
 from mmif import Mmif
-from graph import Graph
-from utils import get_shape_and_color, get_view_label, get_label
+from summarizer.graph import Graph
+#from graph import Graph
+from summarizer.utils import get_shape_and_color, get_view_label, get_label
+#from utils import get_shape_and_color, get_view_label, get_label
 
 
 FRAME_TYPES = ['bars-and-tone', 'slate', 'segments']
@@ -82,6 +84,9 @@ def visualize_mmif(mmif: Mmif, out: str):
                 shape, color = get_shape_and_color(anno.at_type.shortname)
                 label = get_label(view, anno)
                 dot.node(identifier, shape=shape, color=color, label=label)
+                #if anno.at_type.shortname != 'TimePoint':
+                #    if 'targets' in anno.properties:
+                #        print(anno.id, anno.properties['targets'])
     for view_id, alignment in alignments:
         identifier = alignment.id.replace(':', ' ')
         source = alignment.properties['source'].replace(':', ' ')
@@ -119,7 +124,7 @@ def visualize_summary(fname: str, out: str):
     """Visualize the summary in file 'fname' by creating a set of graphs all
     starting with 'out'."""
     summary = json.load(open(fname))
-    print(summary.keys())
+    #print(summary.keys())
     _visualize_views(summary.get('views', []), out + '.summary.views')
     _visualize_transcript(summary.get('transcript', []), out + '.summary.trans')
     _visualize_timeframes(summary, out + '.summary.tfs')
@@ -326,7 +331,7 @@ if __name__ == '__main__':
             visualize_graph(graph, f'{args.o}.graph')
         if args.mmif:
             mmif = Mmif(open(args.i).read())
-            graph = Graph(mmif)
+            #graph = Graph(mmif)
             #graph.trim(0, 10000)
             visualize_mmif(mmif, f'{args.o}.mmif')
 

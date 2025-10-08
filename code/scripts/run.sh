@@ -112,3 +112,27 @@ python run_html.py \
     examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/pages-start
 
 
+## smolvlm2 captioner
+## --------------------------------------------------------------------------------------
+
+# swt-detection-v7.7 ⟹ smolvlm2-captioner
+
+python run_summarizer.py --full \
+    -i examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/smolvlm2_fresh_output.mmif \
+    -o examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/smolvlm2_fresh_output.json
+
+python run_html.py \
+    examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/smolvlm2_fresh_output.json \
+    examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/pages
+
+# Smaler file
+
+python run_summarizer.py --full \
+    -i examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/smolvlm2_fresh_output.trimmed.mmif \
+    -o examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/smolvlm2_fresh_output.trimmed.json
+
+python run_html.py \
+    examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/smolvlm2_fresh_output.trimmed.json \
+    examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/pages-trimmed
+
+
