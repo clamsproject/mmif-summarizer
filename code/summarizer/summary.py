@@ -96,9 +96,12 @@ from summarizer import config
 VERSION = '0.2.0'
 
 
+DEBUG = False
+
 def debug(*texts):
-    for text in texts:
-        sys.stderr.write(f'{text}\n')
+    if DEBUG:
+        for text in texts:
+            sys.stderr.write(f'{text}\n')
 
 
 class SummaryException(Exception):
@@ -497,17 +500,31 @@ class Captions(Nodes):
         if view is not None:
             for doc in self.graph.get_nodes(config.TEXT_DOCUMENT, view_id=view.id):
                 text = doc.properties['text']['@value'].split('[/INST]')[-1]
-                #print(doc)
-                #print(text)
-                #print(doc.anchors)
-                p1, p2 = doc.anchors['time-offsets']
-                if 'representatives' in doc.anchors:
-                    tp_id = doc.anchors["representatives"][0]
-                    tp = summary.graph.get_node(tp_id)
-                self.captions.append(
-                    { 'identifier': doc.identifier,
-                      'time-point': tp.properties['timePoint'],
-                      'text': text })
+                debug(
+                    f'>>> DOC      {doc}',
+                    f'>>> PROPS    {list(doc.properties.keys())}',
+                    f'>>> TEXT     ' + text.replace("\n", "")[:100],
+                    f'>>> ANCHORS  {doc.anchors}')
+                if 'time-offsets' in doc.anchors:
+                    # For older LLava-style captions
+                    # http://apps.clams.ai/llava-captioner/v1.2-6-gc824c97
+                    p1, p2 = doc.anchors['time-offsets']
+                    if 'representatives' in doc.anchors:
+                        tp_id = doc.anchors["representatives"][0]
+                        tp = summary.graph.get_node(tp_id)
+                    self.captions.append(
+                        { 'identifier': doc.identifier,
+                          'time-point': tp.properties['timePoint'],
+                          'text': text })
+                if 'time-point' in doc.anchors:
+                    # For newer SmolVLM-style captions
+                    # http://apps.clams.ai/smolvlm2-captioner
+                    self.captions.append(
+                        { 'identifier': doc.identifier,
+                          'time-point': doc.anchors['time-point'],
+                          'text': text })
+
+                   
 
     def as_json(self):
         return self.captions

@@ -66,19 +66,3 @@ SENTENCE = 'Sentence'
 SEMANTIC_TAG = 'SemanticTag'
 NAMED_ENTITY = 'NamedEntity'
 
-
-# Shape and color settings for the nodes in the graph visualization
-
-GRAPH_FORMATTING = {
-	'VideoDocument': ('component', 'black'),
-	'TextDocument': ('component', 'darkblue'),
-	'BoundingBox': ('box', 'darkgreen'),
-    'Token': ('note', 'darkblue'),
-    'Sentence': ('note', 'darkblue'),
-    'NounChunk': ('note', 'darkblue'),
-    'TimeFrame': ('oval', 'darkred'),
-    'TimePoint': ('circle', 'darkred'),
-    'SemanticTag': ('note', 'darkorange'),
-    'NamedEntity': ('note', 'darkorange'),
-    None: ('Msquare', 'black')
-}

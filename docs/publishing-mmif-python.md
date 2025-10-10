@@ -146,4 +146,33 @@ $ source .venv/bin/activate
 
 ## Adding the summarizer
 
-First steps were to create a new environment, 
+The mmif-python package has a way to deal with utility scripts, in particular cli scripts. They all live in the `mmif/utils` directory and the cli utilities in `mmif/utils/cli`. The `mmif/utils/c__init__.py` has some code in a `cli()` that does the following:
+
+```python
+for cli_module in find_all_modules('mmif.utils.cli'):
+    cli_module_name = cli_module.__name__.rsplit('.')[-1]
+    cli_modules[cli_module_name] = cli_module
+    subcmd_parser = cli_module.prep_argparser(add_help=False)
+```
+
+This finds modules in the top-level of the cli directory, but note that it will descend down that directory. It is going to be easiest to just add single module in there and not packages like the summary. The single script would then import the summary utility that will live in the utils directory, together with the helper scripts that are already there.
+
+Notice the use of `prep_argparser()`, the current code requires utility scripts to have that method. As far as I can see at the moment that is the only restriction on what is in the cli script.
+
+In the setup.py script there is this passage at the end of the file:
+
+```python
+    entry_points={
+        'console_scripts': [
+            'mmif = mmif.__init__:cli',
+        ],
+    },
+```
+
+I think this means that for adding cli scripts we do not need to change the setup file, but we do need to do something to the initialization file of the cli package, which now has
+
+```python
+from mmif.utils.cli import rewind
+from mmif.utils.cli import source
+```
+

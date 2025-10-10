@@ -8,7 +8,6 @@ from mmif import Mmif
 
 from summarizer import config
 from summarizer.utils import compose_id, flatten_paths, normalize_id
-from summarizer.utils import get_shape_and_color, get_view_label, get_label
 
 
 class Graph(object):
@@ -234,10 +233,10 @@ class Node(object):
         source_attype = self.at_type.shortname
         target_attype = target.at_type.shortname
         if debug:
-            print('DEBUG', source_attype, target_attype)
-            print('DEBUG', self.annotation)
-            print('DEBUG', target.annotation)
-            print('DEBUG', target.anchors)
+            print('\n@ DEBUG SOURCE->TARGET ', source_attype, target_attype)
+            print('@ DEBUG SOURCE.PROPS   ', list(self.properties.keys()))
+            print('@ DEBUG TARGET.PROPS   ', list(target.properties.keys()))
+            print('@ DEBUG TARGET.ANCHORS ', target.anchors)
         # If a TextDocument is aligned to a BoundingBox then we grab the coordinates
         # TODO: how are we getting the time point?
         if source_attype == 'TextDocument' and target_attype == 'BoundingBox':
@@ -263,6 +262,11 @@ class Node(object):
             #print('-', source_attype, self.anchors, self, target)
         elif source_attype == 'TimeFrame' and target_attype == 'TextDocument':
             pass
+        # Simply copy the time point
+        elif source_attype == 'TextDocument' and target_attype == 'TimePoint':
+            self.anchors['time-point'] = target.anchors['time-point']
+            if debug:
+                print('+ ADDED SOURCE.ANCHORS ', self.anchors)
         # For Token-TimeFrame alignments all we need are the start and end time points
         elif source_attype == 'Token' and target_attype == 'TimeFrame':
             if 'start' in target.properties and 'end' in target.properties:
@@ -290,8 +294,8 @@ class Node(object):
             pass
         else:
             print('-', source_attype, target_attype)
-        if debug:
-            print('>>>', self.anchors)
+        #if debug:
+        #    print('DEBUG', self.anchors)
 
     def __str__(self):
         anchor = ''

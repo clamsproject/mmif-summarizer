@@ -9,7 +9,6 @@ from collections import UserList
 
 from summarizer.config import KALDI, WHISPER, CAPTIONER, SEGMENTER
 from summarizer.config import TOKEN, ALIGNMENT, TIME_FRAME
-from summarizer.config import GRAPH_FORMATTING
 
 
 def compose_id(view_id, anno_id):
@@ -221,6 +220,7 @@ def normalize_id(doc_ids: list, view: 'View', annotation: 'Annotation'):
     document, targets and representatives properties. Note that timePoint is
     not included because the value is an integer and not an identifier."""
     # TODO: this seems somewhat fragile
+    # TODO: spell out what doc_ids is for (to exclude source documents I think)
     debug = False
     attype = annotation.at_type.shortname
     props = annotation.properties
@@ -284,74 +284,3 @@ def find_matching_tokens(tokens, ne):
     return start_token, end_token
 
 
-# Visualization utilities
-
-
-def get_view_label(view):
-    #print(view)
-    view_id = view.id.replace('_', '')
-    app = Path(view.metadata.app).parts[-2]
-    note = f'{len(view.annotations)} annotations'
-    return f'{view_id} {app}\n{note}'
-
-
-def get_label(view: 'mmif.View', annotation: 'mmif.Annotation'):
-    at_type = annotation.at_type.shortname
-    props = annotation.properties
-    if at_type == 'VideoDocument':
-        identifier = annotation.id.replace('_', '')
-        location = Path(props.location).name
-        return f'{identifier} {at_type}\n{location}'
-    view_id = view.id.replace('_', '')
-    if at_type == 'TimeFrame':
-        if 'start' in props and 'end' in props:
-            start = f'{props["start"]}'
-            end = f'{props["end"]}'
-            label = f'{view_id} TF\n{start}-{end}'
-        elif 'targets' in props:
-            start = props['targets'][0]
-            end = props['targets'][-1]
-            label = f'{view_id} TF\n{start}-{end}'
-        else:
-            label = 'NONE'
-        ftype = f'{props.get("frameType")}'
-        return f'{label} {ftype}' if ftype != 'None' else f'{label}'
-    elif at_type == 'Token':
-        return f'{view_id} {props.get("start")}:{props.get("end")}\n{props.get("text")}'
-    elif at_type == 'NamedEntity':
-        return f'{view_id} NE\n{props.get("text")}'
-    elif at_type == 'TextDocument':
-        text = props.text.value
-        if len(text) > 100:
-            text = f'{text[:100]}...'
-        return f'{view_id} {at_type}\n{text}'
-    elif at_type in ('NounChunk', 'Sentence'):
-        text = props.get('text')
-        if len(text) > 15:
-            text = f'{text[:15]}...'
-        cat = 'NC' if at_type == 'NounChunk' else 'S'
-        return f'{view_id} {cat}\n{text}'
-    elif at_type == 'BoundingBox':
-        return f'{view_id} BB\n{str(props.get("timePoint"))}'
-    elif at_type == 'SemanticTag':
-        return f'{view_id} Tag\n{props.get("tagName")}'
-    #print(annotation, props)
-    return f'{view_id}\n{annotation.id.replace(":", "_")}'
-
-
-def anchor(annotation: 'mmif.Annotation'):
-    props = annotation.properties
-    if 'start' in props and 'end' in props:
-        return f'{props["start"]}-{props["end"]}'
-    elif 'timePoint' in props:
-        return props["timePoint"]
-    else:
-        return None
-    
-
-def get_shape_and_color(annotation_type: str):
-    node_format = GRAPH_FORMATTING.get(annotation_type)
-    if node_format is None:
-        print(f'Warning: no defined shape and color for {annotation_type}, using default')
-        node_format = GRAPH_FORMATTING.get(None)
-    return node_format
