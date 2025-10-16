@@ -7,37 +7,50 @@ from summarizer.summary2html import main as create_html
 
 def argparser():
     parser = argparse.ArgumentParser(description='Create a JSON Summary for a MMIF file')
-    parser.add_argument('-d', metavar='DIRECTORY', help='directory with input files')
-    parser.add_argument('-i', metavar='MMIF_FILE', help='input MMIF file')
-    parser.add_argument('-o', metavar='JSON_FILE', help='output summary file')
-    parser.add_argument('--full', action='store_true', help='print full report')
-    parser.add_argument('--transcript', action='store_true', help='print transcript')
-    parser.add_argument('--captions', action='store_true', help='print Llava captions')
-    parser.add_argument('--timeframes', action='store_true', help='print all time frames')
-    parser.add_argument('--entities', action='store_true', help='print entities from transcript')
+    parser.add_argument('-i', metavar='MMIF_FILE', help='input MMIF file', required=True)
+    parser.add_argument('-o', metavar='JSON_FILE', help='output JSON summary file', required=True)
+    parser.add_argument('--html', metavar='HTML_DICT', help='create HTML summary files')
+    parser.add_argument('--full', action='store_true', help='create full report')
+    parser.add_argument('--transcript', action='store_true', help='include transcript')
+    parser.add_argument('--captions', action='store_true', help='include Llava captions')
+    parser.add_argument('--timeframes', action='store_true', help='include all time frames')
+    parser.add_argument('--entities', action='store_true', help='include entities from transcript')
     return parser
+
+
+def pp_args(args):
+    for a, v in args.__dict__.items():
+        print(f'{a:12s}  -->  {v}')
 
 
 def create_summary():
     parser = argparser()
     args = parser.parse_args()
-    if args.d:
-        for mmif_file in pathlib.Path(args.d).iterdir():
-            if mmif_file.is_file() and mmif_file.name.endswith('.mmif'):
-                print(mmif_file)
-                json_file = str(mmif_file)[:-4] + 'json'
-                mmif_summary = Summary(mmif_file.read_text())
-                mmif_summary.report(
-                    outfile=json_file, full=args.full,
-                    timeframes=args.timeframes, transcript=args.transcript,
-                    captions=args.captions, entities=args.entities)
-    elif args.i and args.o:
-        with open(args.i) as fh:
-            mmif_text = fh.read()
-            mmif_summary = Summary(mmif_text)
+    #pp_args(args)
+    with open(args.i) as fh:
+        mmif_text = fh.read()
+        mmif_summary = Summary(mmif_text)
+        mmif_summary.report(
+            outfile=args.o, html=args.html, full=args.full,
+            timeframes=args.timeframes, transcript=args.transcript,
+            captions=args.captions, entities=args.entities)
+
+
+"""
+
+There used to be an option to process a whole directory, but I never used it and decided
+that if needed it would better be done by an extra script or a separate function.
+
+The code for when there was a -d option is here just in case.
+
+if args.d:
+    for mmif_file in pathlib.Path(args.d).iterdir():
+        if mmif_file.is_file() and mmif_file.name.endswith('.mmif'):
+            print(mmif_file)
+            json_file = str(mmif_file)[:-4] + 'json'
+            mmif_summary = Summary(mmif_file.read_text())
             mmif_summary.report(
-                outfile=args.o, full=args.full,
+                outfile=json_file, full=args.full,
                 timeframes=args.timeframes, transcript=args.transcript,
                 captions=args.captions, entities=args.entities)
-    else:
-        parser.print_help()
+"""

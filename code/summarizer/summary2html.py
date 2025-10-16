@@ -71,6 +71,10 @@ table.transcript {
     border-top: 1px solid #ddd;
 }
 
+a {
+    text-decoration: none;    
+}
+
 .transcript tr {
     border-bottom: 1px solid #ddd;
 }
@@ -132,15 +136,28 @@ def add_index_link(page, summary, summary_part, part_page):
 
 
 def create_html_views(infile: str, outpath: pathlib.Path, summary: dict):
-    page = Html(infile, outpath / views_page, 'Views')
-    for view in summary['views']:
-        page.write('<div>\n<p class=view>\n<table>\n')
-        page.write_tr(
-            ('id', view['id']),
-            ('app', view['app']),
-            ('timestamp', view['timestamp']))
+
+    def write_view_summary(page, summary):
+        page.write('<p class=view>\n')
+        page.write('<table>\n')
+        for view in summary['views']:
+            page.write_tr(
+                (f'<a href="#{view["id"]}">{view["id"]} &mdash; {view["app"]}</a>',))
+        page.write('</table>\n')
+        page.write('</p>\n\n')
+
+    def write_contains(page, view):
         page.write('<tr>\n')
-        page.write(f'  <td valign=top>contains</td>\n')
+        page.write(f'  <td {a_top}>contains</td>\n')
+        page.write(f'  <td>\n')
+        for atype in view['contains']:
+            page.write(f'    <a href={atype}>{atype}</a><br/>\n')
+        page.write(f'  </td>\n')
+        page.write('</tr>\n')
+
+    def write_annotations(page, view):
+        page.write('<tr>\n')
+        page.write(f'  <td {a_top}>annotations</td>\n')
         page.write(f'  <td>\n')
         page.write(f'  <table class=noborder>\n')
         #page.write(f'  <table class=noborder border=0 cellspacing=4 cellpadding=0>\n')
@@ -151,6 +168,44 @@ def create_html_views(infile: str, outpath: pathlib.Path, summary: dict):
         page.write(f'  </table>\n')
         page.write(f'  </td>\n')
         page.write('</tr>\n')
+
+    def write_warnings(page, view):
+        if 'warnings' in view:
+            page.write('<tr>\n')
+            page.write(f'  <td {a_top}>warnings</td>\n')
+            page.write('  <td>\n')
+            page.write('    <pre>\n')
+            for w in view['warnings']:
+                try:
+                    s = json.dumps(json.loads(w), indent=2)
+                except Exception:
+                    s = w
+                page.write(f'{s}\n')
+            page.write('    </pre>\n')
+            page.write('  </td>\n')
+            page.write('\n')
+            page.write('\n')
+            page.write('\n')
+            page.write('</tr>\n')
+
+    page = Html(infile, outpath / views_page, 'Views')
+    write_view_summary(page, summary)
+    for view in summary['views']:
+        identifier = view['id']
+        app = view['app'] 
+        page.write(f'<div id="{identifier}">\n<p class=view>\n<table>\n')
+        page.write_tr(
+            ('id', identifier),
+            ('app', f"<a href={app}>{app}</a>"),
+            ('timestamp', view['timestamp']))
+        if 'warnings' not in view:
+            write_contains(page, view)
+            write_annotations(page, view)
+        page.write_tr(
+            (('parameters', a_top), pretty_json(view['parameters'])),
+            (('appConfiguration', a_top), pretty_json(view['appConfiguration'])))
+        if 'warnings' in view:
+            write_warnings(page, view)
         page.write('</table>\n</p>\n</div>\n\n')
     page.write_to_file()
 
@@ -181,6 +236,7 @@ def create_html_transcript(infile: str, outpath: pathlib.Path, summary: dict):
         page.write_tr(((t1, a_topleft), (t2, a_topleft), sentence['text']))
     page.write('</table>\n')
     page.write_to_file()
+
 
 def create_html_captions(infile: str, outpath: pathlib.Path, summary: dict):
     page = Html(infile, outpath / captions_page, 'Captions')
@@ -220,3 +276,8 @@ class Html:
 
     def write_to_file(self):
         self.path.write_text(self.stream.getvalue())
+
+
+def pretty_json(json_obj: dict):
+    return '<pre>'+json.dumps(json_obj, indent=2)+'</pre>'
+

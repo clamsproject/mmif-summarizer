@@ -44,11 +44,10 @@ OPTIONS:
 
 Run the summarizer over a single MMIF file and write the JSON summary to OUTFILE.
 
--d DIRECTORY
+--html HTML_DIR
 
-Run the summarizer over all MMIF files in the directory, input files are assumed to 
-have the .mmif extension and output files will be written in the same directory with
-the .json extension.
+Generate a mini website in HTML_DIR with pages for views, timeframes, transcript
+and captions.
 
 -- timeframes
 
@@ -73,10 +72,7 @@ Shows captions from the Llava captioner app.
 TODO:
 
 - For the time unit we should really update get_start(), get_end() and other methods.
-- Add parameters and appConfiguration to the views. Maybe use an option for this.
-- Keep all the view metadata (including parameters and appConfiguration), or add an
-  option to do that.
-- Print warnings in the summary.
+- Add the entities back in
 
 """
 
@@ -90,6 +86,7 @@ from summarizer.utils import CharacterList
 from summarizer.utils import get_aligned_tokens
 from summarizer.utils import get_transcript_view, get_last_segmenter_view, get_captions_view
 from summarizer.graph import Graph
+from summarizer.summary2html import create_html
 from summarizer import config
 
 
@@ -119,7 +116,7 @@ class Summary(object):
     transcript      -  instance of Transcript
     timeframes      -  instance of TimeFrames
     entities        -  instance of Entities
-    captions        -  instance of Captions
+    captions        -  instance of get_captions_view
 
     """
 
@@ -148,7 +145,7 @@ class Summary(object):
     def video_documents(self):
         return self.mmif.get_documents_by_type(DocumentTypes.VideoDocument)
 
-    def report(self, outfile=None, full=False, timeframes=False,
+    def report(self, outfile=None, html=None, full=False, timeframes=False,
                transcript=False, captions=False, entities=False):
         json_obj = {
             'mmif_version': self.mmif.metadata.mmif,
@@ -168,6 +165,8 @@ class Summary(object):
         else:
             with open(outfile, 'w') as fh:
                 fh.write(report)
+        if html:
+            create_html(outfile, html)
 
     def print_warnings(self):
         for warning in self.warnings:
@@ -213,16 +212,31 @@ class Views(object):
     def __init__(self, summary):
         self.data = [self.summary(view) for view in summary.mmif.views]
 
+    def __getitem__(self, i):
+        return self.data[i]
+
+    def __len__(self):
+        return len(self.data)
+
     @staticmethod
     def summary(view):
         annotation_types = defaultdict(int)
         for annotation in view.annotations:
             annotation_types[annotation.at_type.shortname] += 1
-        return { 'id': view.id,
-                 'app': view.metadata.app,
-                 'timestamp': view.metadata.timestamp,
-                 'annotations': len(view.annotations),
-                 'annotation_types': dict(annotation_types) }
+        basic_info = {
+            'id': view.id,
+            'app': view.metadata.app,
+            'timestamp': view.metadata.timestamp,
+            'contains': [str(k) for k in view.metadata.contains.keys()],
+            'annotations': len(view.annotations),
+            'annotation_types': dict(annotation_types),
+            'parameters': view.metadata.parameters,
+            'appConfiguration': view.metadata.appConfiguration }
+        if view.metadata.warnings:
+            basic_info['warnings'] = view.metadata.warnings
+        if view.metadata.error:
+            basic_info['error'] = view.metadata.error
+        return basic_info
 
     def pp(self):
         print('\nViews -> ')

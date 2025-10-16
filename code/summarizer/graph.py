@@ -94,11 +94,11 @@ class Graph(object):
     def statistics(self):
         stats = defaultdict(int)
         for node in self.nodes.values():
-            stats[node.at_type.shortname] += 1
+            stats[f'{str(node.view_id):4} {node.at_type.shortname}'] += 1
         return stats
 
     def trim(self, start: int, end: int):
-        """Trim the graph and keep only those nodes that are included in graph
+        """Trim the graph and keep only those nodes that are included in the graph
         between two timepoints (both in milliseconds). This assumes that all nodes
         are anchored on the time in the audio or video stream. At the moment it 
         keeps all nodes that are not explicitly anchored."""
@@ -114,15 +114,22 @@ class Graph(object):
         new_nodes = [n for n in self.nodes.values() if not n.identifier in remove]
         self.nodes = { node.identifier: node for node in new_nodes }
 
-    def pp(self, fname=None):
+    def pp(self, fname=None,skip_timepoints=False):
         fh = sys.stdout if fname is None else open(fname, 'w')
         fh.write("%s\n" % self)
         for view in self.mmif.views:
             fh.write("  <View %s %s>\n" % (view.id, str(view.metadata['app'])))
         for node_id, node in self.nodes.items():
+            if node.at_type.shortname == 'TimePoint':
+                continue
             fh.write("  %-40s" % node)
             targets = [str(t) for t in node.targets]
             fh.write(' -->  [%s]\n' % ' '.join(targets))
+
+    def pp_statistics(self):
+        stats = self.statistics()
+        for at_type in sorted(stats):
+            print(f'{at_type:20} {stats[at_type]:>5}')
 
 
 class TokenIndex(object):
@@ -185,6 +192,7 @@ class Node(object):
     def __init__(self, graph, view, annotation):
         self.graph = graph
         self.view = view
+        self.view_id = None if self.view is None else self.view.id
         self.annotation = annotation
         # copy some information from the Annotation
         self.at_type = annotation.at_type
