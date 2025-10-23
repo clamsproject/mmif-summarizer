@@ -6,10 +6,10 @@ ultimately occur outside a given time range.
 $ uv run cut.py smolvlm2_fresh_output.mmif 1883016 2658025
 $ uv run cut.py smolvlm2_fresh_output.trimmed.mmif 1883016 1900000
 
-It reads the MMIF file and creates an instance of summarizer.graph.Graph  from it,
+It reads the MMIF file and creates an instance of summarizer.graph.Graph from it,
 which is then trimmed. Finally, a new MMIF file is created using just the nodes in
 the graph that were not trimmed. Note that this new MMIF file will include a new
-disclaimer in th etop-level metadata that the contents do not reflect anymore the 
+disclaimer in the top-level metadata that the contents do not reflect anymore the 
 results of the processing pipeline from the view metadata.
 
 """
@@ -22,7 +22,14 @@ from mmif import Annotation
 from summarizer.graph import Graph, normalize_id
 
 
-def cut(fname: str, start: int, end: int):
+'''
+
+This probably depends on the ids in the graph being identical to the ids in the
+MMIF file. If that is not the case then we need to build an extra index.
+
+'''
+
+def main(fname: str, start: int, end: int):
 
     mmif = Mmif(open(fname).read())
     graph = Graph(mmif)
@@ -113,5 +120,5 @@ def print_nodes(nodes: list, skip_timepoints=False):
 
 if __name__ == '__main__':
 
-    cut(sys.argv[1], int(sys.argv[2]), int(int(sys.argv[3])))
+    main(sys.argv[1], int(sys.argv[2]), int(int(sys.argv[3])))
 

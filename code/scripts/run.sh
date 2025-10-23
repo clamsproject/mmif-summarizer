@@ -56,12 +56,17 @@ python run_summarizer.py --timeframes \
     -o examples/pipelines/swt-detection-v5.1--doctr-wrapper-v1.1/cpb-aacip-526-z60bv7c69m.json \
     --html examples/pipelines/swt-detection-v5.1--doctr-wrapper-v1.1/pages
 
-# Testing on the output of the swt-detection/v5.1
+# Testing on the output of swt-detection/v5.1
 
 python run_summarizer.py --timeframes \
     -i examples/pipelines/swt-detection-v5.1/cpb-aacip-526-z60bv7c69m.mmif \
     -o examples/pipelines/swt-detection-v5.1/cpb-aacip-526-z60bv7c69m.json \
     --html examples/pipelines/swt-detection-v5.1/pages
+
+python run_summarizer.py --timeframes \
+    -i examples/pipelines/swt-detection-v5.1/cpb-aacip-526-z60bv7c69m.start.mmif \
+    -o examples/pipelines/swt-detection-v5.1/cpb-aacip-526-z60bv7c69m.start.json \
+    --html examples/pipelines/swt-detection-v5.1/pages-start
 
 
 ## Llava captioner
@@ -80,6 +85,12 @@ python run_summarizer.py --full \
     -i examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.start.mmif \
     -o examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.start.json \
     --html examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/pages-start
+
+
+python run_summarizer.py --full \
+    -i examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.start.minimal.mmif \
+    -o examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.start.minimal.json \
+    --html examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/pages-start-minimal
 
 python run_summarizer.py --full \
     -i examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.trimmed.mmif \

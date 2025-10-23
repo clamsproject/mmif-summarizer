@@ -27,13 +27,11 @@ def create_summary():
     parser = argparser()
     args = parser.parse_args()
     #pp_args(args)
-    with open(args.i) as fh:
-        mmif_text = fh.read()
-        mmif_summary = Summary(mmif_text)
-        mmif_summary.report(
-            outfile=args.o, html=args.html, full=args.full,
-            timeframes=args.timeframes, transcript=args.transcript,
-            captions=args.captions, entities=args.entities)
+    mmif_summary = Summary(args.i)
+    mmif_summary.report(
+        outfile=args.o, html=args.html, full=args.full,
+        timeframes=args.timeframes, transcript=args.transcript,
+        captions=args.captions, entities=args.entities)
 
 
 """

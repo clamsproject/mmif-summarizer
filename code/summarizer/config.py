@@ -61,6 +61,7 @@ TIME_FRAME = AnnotationTypes.TimeFrame.shortname
 BOUNDING_BOX = AnnotationTypes.BoundingBox.shortname
 ALIGNMENT = AnnotationTypes.Alignment.shortname
 
+ANNOTATION = 'Annotation'
 TOKEN = 'Token'
 SENTENCE = 'Sentence'
 SEMANTIC_TAG = 'SemanticTag'
