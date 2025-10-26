@@ -130,3 +130,13 @@ python visualize.py --mmif \
 python visualize.py --graph \
     -i examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/smolvlm2_fresh_output.trimmed.mmif \
     -o out-smolvlm-captioner
+
+
+## spacy output
+## --------------------------------------------------------------------------------------
+
+python run_summarizer.py --full \
+    -i examples/pipelines/spacy-wrapper-v1.1/cpb-aacip-507-9882j68s35-transcript.mmif \
+    -o examples/pipelines/spacy-wrapper-v1.1/cpb-aacip-507-9882j68s35-transcript.json \
+    --html examples/pipelines/spacy-wrapper-v1.1/pages
+

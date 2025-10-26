@@ -40,8 +40,8 @@ def create_html(infile: str, outdir: str):
 
     def write_origin(page):
         command = " ".join(sys.argv)
-        command = command.replace('-i', '\\\n    -i')
-        command = command.replace('-o', '\\\n    -o')
+        command = command.replace(' -i', ' \\\n    -i')
+        command = command.replace(' -o', ' \\\n    -o')
         command = command.replace(' --html', ' \\\n    --html')
         page.write(f'<pre class=origin>{command}</pre>\n\n')
 
@@ -91,6 +91,7 @@ def create_html(infile: str, outdir: str):
         video_length = summary['document'].get('duration_ms', float('nan'))
         if 'timeframe_stats' in summary and summary['timeframe_stats']:
             page.write_section('Content')
+            # TODO: this should be wrapped in a div or a table with one row
             for app in summary['timeframe_stats']:
                 stats = summary['timeframe_stats'][app]
                 page.write('<table>\n')

@@ -23,6 +23,9 @@ CAPTIONER = [
     'http://apps.clams.ai/llava-captioner/v1.2-6-gc824c97',
     'http://apps.clams.ai/smolvlm2-captioner']
 
+NER = [
+    'http://apps.clams.ai/spacy-wrapper/v1.1']
+
 SEGMENTER = 'http://apps.clams.ai/audio-segmenter'
 
 

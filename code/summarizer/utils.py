@@ -68,6 +68,8 @@ def get_aligned_tokens(view):
 
 
 def timestamp(milliseconds: int, format='hh:mm:ss'):
+    # sometimes the milliseconds are a float
+    milliseconds = int(milliseconds)
     seconds = milliseconds // 1000
     minutes = seconds // 60
     hours = minutes // 60
