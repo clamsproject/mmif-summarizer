@@ -5,6 +5,8 @@ from mmif.vocabulary import AnnotationTypes
 
 # The name of CLAMS applications, used to select views and to determine whether
 # the summarizer is appropriate for the app version.
+# TODO: this now requires an exhaustive listing of all allowed apps and their
+# versions, we need a more maintainable system.
 
 KALDI = [
     # The first two use MMIF 0.4 and should probably be retired
@@ -18,7 +20,11 @@ WHISPER = [
     'http://apps.clams.ai/whisper-wrapper/v8-3-g737e280']
 
 CAPTIONER = [
-    'http://apps.clams.ai/llava-captioner/v1.2-6-gc824c97']
+    'http://apps.clams.ai/llava-captioner/v1.2-6-gc824c97',
+    'http://apps.clams.ai/smolvlm2-captioner']
+
+NER = [
+    'http://apps.clams.ai/spacy-wrapper/v1.1']
 
 SEGMENTER = 'http://apps.clams.ai/audio-segmenter'
 
@@ -58,24 +64,9 @@ TIME_FRAME = AnnotationTypes.TimeFrame.shortname
 BOUNDING_BOX = AnnotationTypes.BoundingBox.shortname
 ALIGNMENT = AnnotationTypes.Alignment.shortname
 
+ANNOTATION = 'Annotation'
 TOKEN = 'Token'
 SENTENCE = 'Sentence'
 SEMANTIC_TAG = 'SemanticTag'
 NAMED_ENTITY = 'NamedEntity'
 
-
-# Shape and color settings for the nodes in the graph visualization
-
-GRAPH_FORMATTING = {
-	'VideoDocument': ('component', 'black'),
-	'TextDocument': ('component', 'darkblue'),
-	'BoundingBox': ('box', 'darkgreen'),
-    'Token': ('note', 'darkblue'),
-    'Sentence': ('note', 'darkblue'),
-    'NounChunk': ('note', 'darkblue'),
-    'TimeFrame': ('oval', 'darkred'),
-    'TimePoint': ('circle', 'darkred'),
-    'SemanticTag': ('note', 'darkorange'),
-    'NamedEntity': ('note', 'darkorange'),
-    None: ('Msquare', 'black')
-}

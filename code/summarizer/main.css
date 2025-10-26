@@ -1,0 +1,88 @@
+
+body {
+    margin: 15px;
+}
+
+h2, h3 {
+    border: 1px solid darkslateblue;
+    border-radius: 5px;
+    background: lightblue;
+    padding: 15px;
+}
+
+div {
+    xmargin-top: -20px;
+    xmargin-bottom: -20px;
+}
+
+div.section {
+    border: 1px solid darkslateblue;
+    border-radius: 5px;
+    display: block-inline;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+p.views {
+    border: 1px solid darkslateblue;
+    padding: 5px;
+}
+
+p.view {
+    padding: 5px;
+}
+
+pre.origin {
+    font-size: 14px;
+    padding: 5px;
+    border: 1px solid darkslateblue;
+    border-radius: 5px;
+    background-color: #eee;
+}
+
+table.noborder {
+    border: 0px;
+    border-collapse: collapse;
+}
+
+table {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+
+table.transcript {
+    border: 0px;
+    border-collapse: collapse;
+    border-top: 1px solid #ddd;
+}
+
+a {
+    text-decoration: none;    
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.transcript tr {
+    border-bottom: 1px solid #ddd;
+}
+
+.transcript tr:hover {
+    background-color: #eee;
+}
+
+.transcript td {
+    border: 0px;
+}
+
+td {
+    border: 1px solid black;
+    padding: 8px;
+    spacing: 0px;
+}
+
+.noborder td {
+    border: 0px;
+    padding: 4px;
+}

@@ -8,7 +8,6 @@ from mmif import Mmif
 
 from summarizer import config
 from summarizer.utils import compose_id, flatten_paths, normalize_id
-from summarizer.utils import get_shape_and_color, get_view_label, get_label
 
 
 class Graph(object):
@@ -95,11 +94,11 @@ class Graph(object):
     def statistics(self):
         stats = defaultdict(int)
         for node in self.nodes.values():
-            stats[node.at_type.shortname] += 1
+            stats[f'{str(node.view_id):4} {node.at_type.shortname}'] += 1
         return stats
 
     def trim(self, start: int, end: int):
-        """Trim the graph and keep only those nodes that are included in graph
+        """Trim the graph and keep only those nodes that are included in the graph
         between two timepoints (both in milliseconds). This assumes that all nodes
         are anchored on the time in the audio or video stream. At the moment it 
         keeps all nodes that are not explicitly anchored."""
@@ -115,15 +114,22 @@ class Graph(object):
         new_nodes = [n for n in self.nodes.values() if not n.identifier in remove]
         self.nodes = { node.identifier: node for node in new_nodes }
 
-    def pp(self, fname=None):
+    def pp(self, fname=None,skip_timepoints=False):
         fh = sys.stdout if fname is None else open(fname, 'w')
         fh.write("%s\n" % self)
         for view in self.mmif.views:
             fh.write("  <View %s %s>\n" % (view.id, str(view.metadata['app'])))
         for node_id, node in self.nodes.items():
+            if node.at_type.shortname == 'TimePoint':
+                continue
             fh.write("  %-40s" % node)
             targets = [str(t) for t in node.targets]
             fh.write(' -->  [%s]\n' % ' '.join(targets))
+
+    def pp_statistics(self):
+        stats = self.statistics()
+        for at_type in sorted(stats):
+            print(f'{at_type:20} {stats[at_type]:>5}')
 
 
 class TokenIndex(object):
@@ -186,6 +192,7 @@ class Node(object):
     def __init__(self, graph, view, annotation):
         self.graph = graph
         self.view = view
+        self.view_id = None if self.view is None else self.view.id
         self.annotation = annotation
         # copy some information from the Annotation
         self.at_type = annotation.at_type
@@ -234,10 +241,10 @@ class Node(object):
         source_attype = self.at_type.shortname
         target_attype = target.at_type.shortname
         if debug:
-            print('DEBUG', source_attype, target_attype)
-            print('DEBUG', self.annotation)
-            print('DEBUG', target.annotation)
-            print('DEBUG', target.anchors)
+            print('\n@ DEBUG SOURCE->TARGET ', source_attype, target_attype)
+            print('@ DEBUG SOURCE.PROPS   ', list(self.properties.keys()))
+            print('@ DEBUG TARGET.PROPS   ', list(target.properties.keys()))
+            print('@ DEBUG TARGET.ANCHORS ', target.anchors)
         # If a TextDocument is aligned to a BoundingBox then we grab the coordinates
         # TODO: how are we getting the time point?
         if source_attype == 'TextDocument' and target_attype == 'BoundingBox':
@@ -263,6 +270,11 @@ class Node(object):
             #print('-', source_attype, self.anchors, self, target)
         elif source_attype == 'TimeFrame' and target_attype == 'TextDocument':
             pass
+        # Simply copy the time point
+        elif source_attype == 'TextDocument' and target_attype == 'TimePoint':
+            self.anchors['time-point'] = target.anchors['time-point']
+            if debug:
+                print('+ ADDED SOURCE.ANCHORS ', self.anchors)
         # For Token-TimeFrame alignments all we need are the start and end time points
         elif source_attype == 'Token' and target_attype == 'TimeFrame':
             if 'start' in target.properties and 'end' in target.properties:
@@ -290,8 +302,8 @@ class Node(object):
             pass
         else:
             print('-', source_attype, target_attype)
-        if debug:
-            print('>>>', self.anchors)
+        #if debug:
+        #    print('DEBUG', self.anchors)
 
     def __str__(self):
         anchor = ''

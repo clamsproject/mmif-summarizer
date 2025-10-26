@@ -5,7 +5,7 @@ Code to create a summary of an MMIF file, only keeping those annotations that ar
 This code requries Python 3.10 or higher and the clams-python module:
 
 ```bash
-$ pip install clams-python>=1.1.3
+$ pip install clams-python>=1.3.3
 ```
 
 To run properly it requires MMIF files from version 1.0.0 or higher. There are no plans to make older MMIF files palatable to the summarizer.
@@ -16,21 +16,19 @@ The summarizer can generate a JSON summary as well as a mini website from the su
 
 ## Usage
 
-The summarizer is implemented as a Python package. If you have installed the package you have access to the summarize and create-html command utilities, but the package also comes with `run_summarizer.py` and `run_html.py` scripts that call the package.
+The summarizer is implemented as a Python package. If you have installed the package you have access to the summarize command utility, but the package also comes with the `run_summarizer.py` script which calls the package.
 
-The summarizer creates a JSON summary, which can then be turned into a mini webpage. After installing the module you can run the code as follows:
+The summarizer creates a JSON summary, and optionally turns it into a mini webpage. After installing the module you can run the code as follows:
 
 ```bash
-$ summarize --full -i MMIF_FILE -o JSON_FILE
-$ create-html JSON_FILE HTML_DIR
+$ summarize --full -i MMIF_FILE -o JSON_FILE --html HTML_DIR
 ```
 
-For development you can run the code from this repository using the run scripts:
+For development you can run the code from this repository using the run script:
 
 ```bash
 $ cd code
-$ python run_summarizer.py --full -i MMIF_FILE -o JSON_FILE
-$ python run_html.py JSON_FILE HTML_DIR
+$ python run_summarizer.py --full -i MMIF_FILE -o JSON_FILE --html HTML_DIR
 ```
 
 

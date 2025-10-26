@@ -53,44 +53,86 @@ import json
 import pathlib
 import collections
 import argparse
+from pathlib import Path
 
 import graphviz
 
 from mmif import Mmif
-from graph import Graph
-from utils import get_shape_and_color, get_view_label, get_label
+from summarizer.graph import Graph
+#from summarizer.utils import get_shape_and_color, get_view_label, get_label
 
+
+PRINT_WARNINGS = False
 
 FRAME_TYPES = ['bars-and-tone', 'slate', 'segments']
 
+# Shape and color settings for the nodes
+GRAPH_FORMATTING = {
+    'VideoDocument': ('component', 'black'),
+    'TextDocument': ('component', 'darkblue'),
+    'Annotation': ('component', 'darkgreen'),
+    'BoundingBox': ('box', 'darkgreen'),
+    'Token': ('note', 'darkblue'),
+    'Sentence': ('note', 'darkblue'),
+    'NounChunk': ('note', 'darkblue'),
+    'TimeFrame': ('oval', 'darkred'),
+    'TimePoint': ('box', 'darkred'),
+    'SemanticTag': ('note', 'darkorange'),
+    'NamedEntity': ('note', 'darkorange'),
+    None: ('Msquare', 'black')
+}
 
-# Visualizing the MMIF file and the Graph created from it
 
-def visualize_mmif(mmif: Mmif, out: str):
-    """Visualize the explicit links in the MMIF file."""
-    # TODO: this is not working as it should probably due to lack of
-    # standardization in the identifiers, will fix this after taking
-    # a good look at the graph and summarizer code.
-    dot = graphviz.Digraph(comment=out)
-    alignments = []
-    for view in mmif.views:
-        for anno in view.annotations:
-            identifier = anno.id.replace(':', ' ')
-            if anno.at_type.shortname == 'Alignment':
-                alignments.append((view.id, anno))
-            else:
-                shape, color = get_shape_and_color(anno.at_type.shortname)
-                label = get_label(view, anno)
-                dot.node(identifier, shape=shape, color=color, label=label)
-    for view_id, alignment in alignments:
-        identifier = alignment.id.replace(':', ' ')
-        source = alignment.properties['source'].replace(':', ' ')
-        target = alignment.properties['target'].replace(':', ' ')
-        dot.node(identifier, shape='diamond')
-        dot.edge(identifier, source)
-        dot.edge(identifier, target)
-    dot.render(out, format='pdf')
-    dot.render(out, format='png')
+class MmifVisualizer:
+
+    def __init__(self, mmif: Mmif, out: str):
+        self.mmif = mmif
+        self.out = out
+        self.dot = graphviz.Digraph(comment=out)
+        self.alignments = []
+        self.target_links = []
+        self._add_nodes()
+        self._add_target_edges()
+        self._add_alignments()
+
+    def _add_nodes(self):
+        """Add nodes to the graph, but skip alignment nodes for now."""
+        for view in self.mmif.views:
+            for anno in view.annotations:
+                at_type = anno.at_type.shortname
+                identifier = anno.id if ':' in anno.id else f'{view.id}:{anno.id}'
+                # colons in dot identifiers indicate ports
+                dot_identifier = identifier.replace(':', ' ')
+                if at_type == 'Alignment':
+                    self.alignments.append((view.id, anno))
+                else:
+                    shape, color = get_shape_and_color(anno.at_type.shortname)
+                    label = get_label(view, anno)
+                    label_tmp = label.replace("\n", " ")
+                    #print(f'>>> {identifier} [{label_tmp}]')
+                    self.dot.node(dot_identifier, shape=shape, color=color, label=label)
+                    if 'targets' in anno.properties:
+                        for target in anno.properties['targets']:
+                            self.target_links.append((dot_identifier, target.replace(':', ' ')))
+
+    def _add_target_edges(self):
+        for source, target in self.target_links:
+            self.dot.edge(source, target)
+
+    def _add_alignments(self):
+        for view_id, alignment in self.alignments:
+            identifier = alignment.id
+            dot_identifier = alignment.id.replace(':', ' ')
+            source = alignment.properties['source'].replace(':', ' ')
+            target = alignment.properties['target'].replace(':', ' ')
+            self.dot.node(dot_identifier, shape='diamond', label=identifier)
+            self.dot.edge(dot_identifier, source, label='s')
+            self.dot.edge(dot_identifier, target, label='t')
+
+    def write(self):
+        self.dot.render(self.out, format='pdf')
+        self.dot.render(self.out, format='png')
+
 
 
 def visualize_graph(graph: Graph, out: str):
@@ -113,15 +155,13 @@ def visualize_graph(graph: Graph, out: str):
     dot.render(out, format='png')
 
 
-# Visualizing the summary
-
 def visualize_summary(fname: str, out: str):
     """Visualize the summary in file 'fname' by creating a set of graphs all
     starting with 'out'."""
     summary = json.load(open(fname))
-    print(summary.keys())
+    #print(summary.keys())
     _visualize_views(summary.get('views', []), out + '.summary.views')
-    _visualize_transcript(summary.get('transcript', []), out + '.summary.trans')
+    #_visualize_transcript(summary.get('transcript', []), out + '.summary.trans')
     _visualize_timeframes(summary, out + '.summary.tfs')
     _visualize_tags(summary.get('tags', []), out + '.summary.tags')
     _visualize_entities(summary.get('entities', []), out + '.summary.ents')
@@ -268,7 +308,83 @@ def _visualize_caption(captions: list, fname: str):
     dot.render(fname, format='png')
 
 
-# Utilities
+
+# Visualization utilities
+
+def get_view_label(view):
+    #print(view)
+    view_id = view.id.replace('_', '')
+    app = Path(view.metadata.app).parts[-2]
+    note = f'{len(view.annotations)} annotations'
+    return f'{view_id} {app}\n{note}'
+
+
+def get_label(view: 'mmif.View', annotation: 'mmif.Annotation'):
+    at_type = annotation.at_type.shortname
+    props = annotation.properties
+    # Documents
+    if at_type == 'VideoDocument':
+        location = Path(props.location).name
+        return f'{annotation.id} {at_type}\n{location}'
+    elif at_type == 'TextDocument':
+        text = props.text.value
+        if len(text) > 100:
+            text = f'{text[:100]}...'
+        return f'{annotation.id}\n{text}'
+    # Time points and time frames
+    elif at_type == 'TimePoint':
+        return f'{annotation.id}\n{props["timePoint"]}'
+    elif at_type == 'TimeFrame':
+        if 'start' in props and 'end' in props:
+            label = f'{annotation.id}\n{props["start"]}-{props["end"]}'
+        elif 'targets' in props:
+            label = f'{annotation.id}' #TF\n{props["targets"][0]}-{props["targets"][-1]}'
+        else:
+            label = 'NONE'
+        ftype = f'{props.get("frameType")}'
+        return f'{label} {ftype}' if ftype != 'None' else f'{label}'
+    # Image elements
+    elif at_type == 'BoundingBox':
+        return f'{view.id} BB\n{str(props.get("timePoint"))}'
+    # Linguistic entities
+    elif at_type == 'Token':
+        return f'{view.id} {props.get("start")}:{props.get("end")}\n{props.get("text")}'
+    elif at_type == 'NamedEntity':
+        return f'{view.id} NE\n{props.get("text")}'
+    elif at_type in ('NounChunk', 'Sentence'):
+        text = props.get('text')
+        if len(text) > 15:
+            text = f'{text[:15]}...'
+        cat = 'NC' if at_type == 'NounChunk' else 'S'
+        return f'{view.id} {cat}\n{text}'
+    # Other
+    elif at_type == 'Annotation':
+        props_string = '\n'.join([f'{k} = {v}' for k, v in props.items()])
+        return f'{annotation.id}\n\n{props_string}'
+    #print(annotation, props)
+    return f'{view.id}\n{annotation.id}'
+
+
+def XXXanchor(annotation: 'mmif.Annotation'):
+    props = annotation.properties
+    if 'start' in props and 'end' in props:
+        return f'{props["start"]}-{props["end"]}'
+    elif 'timePoint' in props:
+        return props["timePoint"]
+    else:
+        return None
+    
+
+def get_shape_and_color(annotation_type: str):
+    node_format = GRAPH_FORMATTING.get(annotation_type)
+    if node_format is None:
+        if PRINT_WARNINGS:
+            print(f'Warning: no defined shape and color for {annotation_type}, using default')
+        node_format = GRAPH_FORMATTING.get(None)
+    return node_format
+
+
+# Other Utilities
 
 
 def convert_milliseconds(t: int):
@@ -278,6 +394,7 @@ def convert_milliseconds(t: int):
     hours = int(t/(1000 * 60 * 60)) %24
     return hours, minutes, seconds, milliseconds
 
+
 def group_instances(instances: list):
     d = collections.defaultdict(list)
     for instance in instances:
@@ -286,14 +403,14 @@ def group_instances(instances: list):
 
 
 def create_argument_parser():
-    h_mmif = "visualize a MMIF file, both the raw file and the underlying graph"
+    h_mmif = "visualize a MMIF file"
     h_graph = "visualize the underlying graph of a MMIF file"
-    h_summary = "visualize the summary of a MMIF file"
+    h_summary = "visualize the JSON summary previously created from a MMIF file"
     h_input = "input file, either a MMIF file or a summary"
     h_output = "output directory for graphviz files (default='.')"
     parser = argparse.ArgumentParser()
     parser.add_argument('--mmif', action="store_true", help=h_mmif)
-    parser.add_argument('--graph', action="store_true", help=h_mmif)
+    parser.add_argument('--graph', action="store_true", help=h_graph)
     parser.add_argument('--summary', action="store_true", help=h_summary)
     parser.add_argument('-i', metavar='FILE', help=h_input)
     parser.add_argument('-o', metavar='PATH', help=h_output, default='.')
@@ -318,17 +435,16 @@ if __name__ == '__main__':
         parser.print_help()
         exit()
 
-
     if args.graph or args.mmif:
+        print(f'>>> Opening MMIF file "{args.i}"')
         mmif = Mmif(open(args.i).read())
+        if args.mmif:
+            print(f'>>> Creating mmif visualization in "{args.o}.mmif.*"')
+            MmifVisualizer(mmif, f'{args.o}.mmif').write()
         if args.graph:
+            print(f'>>> Creating graph visualization in "{args.o}.graph.*"')
             graph = Graph(mmif)
             visualize_graph(graph, f'{args.o}.graph')
-        if args.mmif:
-            mmif = Mmif(open(args.i).read())
-            graph = Graph(mmif)
-            #graph.trim(0, 10000)
-            visualize_mmif(mmif, f'{args.o}.mmif')
 
     if args.summary:
         visualize_summary(args.i, args.o)

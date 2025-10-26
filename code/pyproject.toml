@@ -1,6 +1,6 @@
 [project]
 name = "summarizer-mv"
-version = "0.2.2"
+version = "0.2.4"
 description = "MMIF Summarizer"
 readme = "summarizer/README.md"
 requires-python = ">=3.10"
@@ -12,7 +12,6 @@ license-files = ["LICENSE"]
 
 [project.scripts]
 summarize = "summarizer:create_summary"
-create-html = "summarizer:create_html"
 
 [build-system]
 requires = ["hatchling >= 1.26"]

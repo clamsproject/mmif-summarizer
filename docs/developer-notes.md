@@ -37,10 +37,11 @@ The descriptions and strategies here are based on using real data from the MMIF 
 <whisper-wrapper v8-3-g737e280>
 ```
 
-In addition, I am working with an example output file from the Llava captioner, which is using he following pipeline:
+In addition, I am working with some sample output files from two captioners, using he following pipelines:
 
 ```
 <swt-detection v7.4> ==> <llava-captioner v1.2-6-gc824c97>
+<swt-detection v7.7> ==> <smolvlm2-captioner>
 ```
 
 The example files are all stored in the `code/examples/pipelines` folder in subdirectories that encode the pipeline name. Various output files are also stored in those subdirectories with suffixes or perhaps in further subdirectories.
@@ -53,7 +54,5 @@ The following links go into some pipelines one by one:
 - [Kaldi](pipelines/kaldi.md)
 - [SWT ⟹ DocTR](pipelines/swt-doctr.md)
 - [SWT ⟹ Llava](pipelines/swt-llava.md)
+- [SWT ⟹ SmolVLM](pipelines/swt-smolvlm.md)
 - [spaCy](pipelines/spacy.md)
-
-
-

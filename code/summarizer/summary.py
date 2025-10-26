@@ -44,11 +44,10 @@ OPTIONS:
 
 Run the summarizer over a single MMIF file and write the JSON summary to OUTFILE.
 
--d DIRECTORY
+--html HTML_DIR
 
-Run the summarizer over all MMIF files in the directory, input files are assumed to 
-have the .mmif extension and output files will be written in the same directory with
-the .json extension.
+Generate a mini website in HTML_DIR with pages for views, timeframes, transcript
+and captions.
 
 -- timeframes
 
@@ -73,32 +72,33 @@ Shows captions from the Llava captioner app.
 TODO:
 
 - For the time unit we should really update get_start(), get_end() and other methods.
-- Add parameters and appConfiguration to the views. Maybe use an option for this.
-- Keep all the view metadata (including parameters and appConfiguration), or add an
-  option to do that.
-- Print warnings in the summary.
+- Add the entities back in
 
 """
 
-import sys, io, json, argparse, pathlib
+import os, sys, io, json, argparse, pathlib
 from collections import defaultdict
 
 from mmif.serialize import Mmif
 from mmif.vocabulary import DocumentTypes
 
 from summarizer.utils import CharacterList
-from summarizer.utils import get_aligned_tokens
+from summarizer.utils import get_aligned_tokens, timestamp
 from summarizer.utils import get_transcript_view, get_last_segmenter_view, get_captions_view
 from summarizer.graph import Graph
+from summarizer.summary2html import create_html
 from summarizer import config
 
 
 VERSION = '0.2.0'
 
 
+DEBUG = False
+
 def debug(*texts):
-    for text in texts:
-        sys.stderr.write(f'{text}\n')
+    if DEBUG:
+        for text in texts:
+            sys.stderr.write(f'{text}\n')
 
 
 class SummaryException(Exception):
@@ -109,6 +109,7 @@ class Summary(object):
 
     """Implements the summary of a MMIF file.
 
+    fname           -  name of the input mmif file
     mmif            -  instance of mmif.serialize.Mmif
     graph           -  instance of graph.Graph
     documents       -  instance of Documents
@@ -116,17 +117,23 @@ class Summary(object):
     transcript      -  instance of Transcript
     timeframes      -  instance of TimeFrames
     entities        -  instance of Entities
-    captions        -  instance of Captions
+    captions        -  instance of get_captions_view
 
     """
 
-    def __init__(self, mmif):
-        self.mmif = mmif if type(mmif) is Mmif else Mmif(mmif)
+    def __init__(self, mmif_file):
+        self.fname = mmif_file
+        #self.mmif = mmif if type(mmif) is Mmif else Mmif(mmif)
+        self.mmif = Mmif(pathlib.Path(mmif_file).read_text())
         self.warnings = []
         self.graph = Graph(self.mmif)
+        self.mmif_version = self.mmif.metadata['mmif']
         self.documents = Documents(self)
+        self.annotations = Annotations(self)
+        self.document = Document(self)
         self.views = Views(self)
         self.timeframes = TimeFrames(self)
+        self.timeframe_stats = TimeFrameStats(self)
         self.transcript = Transcript(self)
         self.captions = Captions(self)
         self.entities = Entities(self)
@@ -145,11 +152,13 @@ class Summary(object):
     def video_documents(self):
         return self.mmif.get_documents_by_type(DocumentTypes.VideoDocument)
 
-    def report(self, outfile=None, full=False, timeframes=False,
+    def report(self, outfile=None, html=None, full=False, timeframes=False,
                transcript=False, captions=False, entities=False):
         json_obj = {
             'mmif_version': self.mmif.metadata.mmif,
+            'document': self.document.data,
             'documents': self.documents.data,
+            'annotations': self.annotations.data,
             'views': self.views.data}
         if transcript or full:
             json_obj['transcript'] = self.transcript.data
@@ -157,6 +166,7 @@ class Summary(object):
             json_obj['captions'] = self.captions.as_json()
         if timeframes or full:
             json_obj['timeframes'] = self.timeframes.as_json()
+            json_obj['timeframe_stats'] = self.timeframe_stats.data
         if entities or full:
             json_obj['entities'] = self.entities.as_json()
         report = json.dumps(json_obj, indent=2)
@@ -165,6 +175,8 @@ class Summary(object):
         else:
             with open(outfile, 'w') as fh:
                 fh.write(report)
+        if html:
+            create_html(outfile, html)
 
     def print_warnings(self):
         for warning in self.warnings:
@@ -202,24 +214,84 @@ class Documents(object):
             print('    %s %s' % (d['type'], d['location']))
 
 
+class Annotations(object):
+
+    """Contains a dictionary of Annotation object summaries, indexed on view
+    identifiers."""
+
+    def __init__(self, summary):
+        self.data = defaultdict(list)
+        # summary.graph.get_nodes(config.ANNOTATION, view_id=view.id)
+        for anno in summary.graph.get_nodes(config.ANNOTATION):
+            self.data[anno.view.id].append(anno.properties)
+
+    def get(self, item):
+        return self.data.get(item, [])
+
+    def get_all_annotations(self):
+        annotations = []
+        for annos in self.data.values():
+            annotations.extend(annos)
+        return annotations
+
+
+class Document(object):
+
+    """Collects some document-level information, including MMIF version, size of
+    the MMIF file and some information from the SWT document annotation."""
+
+    def __init__(self, summary):
+        self.data = {
+            'mmif_version': summary.mmif_version,
+            'size': os.path.getsize(summary.fname) }
+        annotations = summary.annotations.get_all_annotations()
+        if annotations:
+            doc_level_annotation = annotations[0]
+            if 'fps' in doc_level_annotation:
+                self.data['fps'] = doc_level_annotation['fps']
+            if 'frameCount' in doc_level_annotation:
+                self.data['frames'] = doc_level_annotation['frameCount']
+            if 'duration' in doc_level_annotation:
+                duration = doc_level_annotation['duration']
+                # both in milliseconds and as a timestamp
+                self.data['duration_ms'] = duration
+                self.data['duration_ts'] = timestamp(duration)
+
+
 class Views(object):
 
     """Contains a list of view summaries, which are dictionaries with just
     the id, app and timestamp properties."""
 
     def __init__(self, summary):
-        self.data = [self.summary(view) for view in summary.mmif.views]
+        self.summary = summary
+        self.data = [self.get_view_summary(view) for view in summary.mmif.views]
 
-    @staticmethod
-    def summary(view):
+    def __getitem__(self, i):
+        return self.data[i]
+
+    def __len__(self):
+        return len(self.data)
+
+    #@staticmethod
+    def get_view_summary(self, view):
         annotation_types = defaultdict(int)
         for annotation in view.annotations:
             annotation_types[annotation.at_type.shortname] += 1
-        return { 'id': view.id,
-                 'app': view.metadata.app,
-                 'timestamp': view.metadata.timestamp,
-                 'annotations': len(view.annotations),
-                 'annotation_types': dict(annotation_types) }
+        basic_info = {
+            'id': view.id,
+            'app': view.metadata.app,
+            'timestamp': view.metadata.timestamp,
+            'contains': [str(k) for k in view.metadata.contains.keys()],
+            'annotation_count': len(view.annotations),
+            'annotation_types': dict(annotation_types),
+            'parameters': view.metadata.parameters,
+            'appConfiguration': view.metadata.appConfiguration }
+        if view.metadata.warnings:
+            basic_info['warnings'] = view.metadata.warnings
+        if view.metadata.error:
+            basic_info['error'] = view.metadata.error
+        return basic_info
 
     def pp(self):
         print('\nViews -> ')
@@ -369,34 +441,45 @@ class TimeFrames(Nodes):
     """For now, we take only the TimeFrames that have a frame type, which rules out
     all the frames we got from Kaldi."""
 
-    # TODO: problem here is that this is totally unstructured and gets frames
-    #       from all over the graph
-
     def __init__(self, summary):
         super().__init__(summary)
-        for timeframe in self.graph.get_nodes(config.TIME_FRAME):
-            if timeframe.has_label():
-                self.add(timeframe)
+        # a dictionary mapping app names to lists of timeframe summaries
+        self.data = defaultdict(list)
+        for tf_node in self.graph.get_nodes(config.TIME_FRAME):
+            if tf_node.has_label():
+                self.add(tf_node)
+        self._collect_timeframe_summaries()
+        self._sort_timeframe_summaries()
 
-    def as_json(self):
-        timeframes = defaultdict(list)
+    def _collect_timeframe_summaries(self):
         for tf in self.nodes:
             label = tf.frame_type()
             try:
                 start, end = tf.anchors['time-offsets']
             except KeyError:
-                # TODO: this defies the notion of using the anchors for this,
-                # but maybe in this case we should go straight to the start/end
+                # TODO: 
+                # - this defies the notion of using the anchors for this, but 
+                #   maybe in this case we should go straight to the start/end
+                # - this code below also raises an error if there are no start
+                #   and end properties
                 start = tf.properties['start']
                 end = tf.properties['end']
             representatives = tf.representatives()
             rep_tps = [rep.properties['timePoint'] for rep in representatives]
             score = tf.properties.get('classification', {}).get(label)
             app = tf.view.metadata.app
-            timeframes[app].append(
+            self.data[app].append(
                 { 'identifier': tf.identifier, 'label': label, 'score': score,
                   'start-time': start, 'end-time': end, 'representatives': rep_tps })
-        return timeframes
+
+    def _sort_timeframe_summaries(self):
+        """Sort the data on their start time, do this for all apps."""
+        for app in self.data:
+            sort_function = lambda x: x['start-time']
+            self.data[app] = list(sorted(self.data[app], key=sort_function))
+
+    def as_json(self):
+        return self.data
 
     def pp(self):
         print('\nTimeframes -> ')
@@ -404,6 +487,54 @@ class TimeFrames(Nodes):
             summary = tf.summary()
             print('    %s:%s %s' % (summary['start'], summary['end'],
                                     summary['frameType']))
+
+
+class TimeFrameStats(object):
+
+    def __init__(self, summary):
+        # a dictionary mapping app names to frameType->duration dictionaries,
+        # where the duration is cumulative over all instances
+        self.timeframes = summary.timeframes
+        self.data = {}
+        self._collect_durations()
+        self._collect_other_morsels()
+
+    def _collect_durations(self):
+        timeframes = self.timeframes.data
+        for app in timeframes:
+            self.data[app] = {}
+            for tf in timeframes[app]:
+                label = tf.get('label')
+                if label not in self.data[app]:
+                    self.data[app][label] = {'count': 0, 'duration': 0}
+                self.data[app][label]['count'] += 1
+                duration = tf['end-time'] - tf['start-time']
+                if label is not None:
+                    # TODO: these gave weird values for duration
+                    #print('---',app, label, duration)
+                    self.data[app][label]['duration'] += duration
+                duration = self.data[app][label]['duration']
+                count = self.data[app][label]['count']
+                self.data[app][label]['average'] = duration // count 
+
+    def _collect_other_morsels(self):
+        # First we want everything grouped by app and label
+        timeframes = self.timeframes.data
+        grouped_timeframes = defaultdict(lambda: defaultdict(list))
+        for app in timeframes:
+            for tf in timeframes[app]:
+                label = tf.get('label')
+                grouped_timeframes[app][label].append(tf)
+        # The we pick the morsels for each label
+        for app in grouped_timeframes:
+            for label in grouped_timeframes[app]:
+                tfs = grouped_timeframes[app][label]
+                sort_on_start = lambda tf: tf['start-time']
+                sort_on_length = lambda tf: tf['end-time'] - tf['start-time']
+                first_tf = list(sorted(tfs, key=sort_on_start))[0]
+                longest_tf = list(sorted(tfs, key=sort_on_length, reverse=True))[0]                
+                self.data[app][label]['first'] = first_tf['start-time']
+                self.data[app][label]['longest'] = longest_tf['start-time']
 
 
 class Entities(Nodes):
@@ -497,14 +628,31 @@ class Captions(Nodes):
         if view is not None:
             for doc in self.graph.get_nodes(config.TEXT_DOCUMENT, view_id=view.id):
                 text = doc.properties['text']['@value'].split('[/INST]')[-1]
-                p1, p2 = doc.anchors['time-offsets']
-                if 'representatives' in doc.anchors:
-                    tp_id = doc.anchors["representatives"][0]
-                    tp = summary.graph.get_node(tp_id)
-                self.captions.append(
-                    { 'identifier': doc.identifier,
-                      'time-point': tp.properties['timePoint'],
-                      'text': text })
+                debug(
+                    f'>>> DOC      {doc}',
+                    f'>>> PROPS    {list(doc.properties.keys())}',
+                    f'>>> TEXT     ' + text.replace("\n", "")[:100],
+                    f'>>> ANCHORS  {doc.anchors}')
+                if 'time-offsets' in doc.anchors:
+                    # For older LLava-style captions
+                    # http://apps.clams.ai/llava-captioner/v1.2-6-gc824c97
+                    p1, p2 = doc.anchors['time-offsets']
+                    if 'representatives' in doc.anchors:
+                        tp_id = doc.anchors["representatives"][0]
+                        tp = summary.graph.get_node(tp_id)
+                    self.captions.append(
+                        { 'identifier': doc.identifier,
+                          'time-point': tp.properties['timePoint'],
+                          'text': text })
+                if 'time-point' in doc.anchors:
+                    # For newer SmolVLM-style captions
+                    # http://apps.clams.ai/smolvlm2-captioner
+                    self.captions.append(
+                        { 'identifier': doc.identifier,
+                          'time-point': doc.anchors['time-point'],
+                          'text': text })
+
+                   
 
     def as_json(self):
         return self.captions
@@ -585,40 +733,3 @@ class Bin(object):
     def print_nodes(self, i):
         for node in self.nodes:
             print(' ', i, node)
-
-
-def parse_arguments():
-    parser = argparse.ArgumentParser(description='Create a JSON Summary for a MMIF file')
-    parser.add_argument('-d', metavar='DIRECTORY', help='directory with input files')
-    parser.add_argument('-i', metavar='MMIF_FILE', help='input MMIF file')
-    parser.add_argument('-o', metavar='JSON_FILE', help='output summary file')
-    parser.add_argument('--full', action='store_true', help='print full report, overrule other options')
-    parser.add_argument('--views', action='store_true', help='include view metadata')
-    parser.add_argument('--transcript', action='store_true', help='include transcript')
-    parser.add_argument('--captions', action='store_true', help='include Llava captions')
-    parser.add_argument('--timeframes', action='store_true', help='include all time frames')
-    parser.add_argument('--entities', action='store_true', help='include entities from transcript')
-    return parser.parse_args()
-
-
-if __name__ == '__main__':
-
-    args = parse_arguments()
-    if args.d:
-        for mmif_file in pathlib.Path(args.d).iterdir():
-            if mmif_file.is_file() and mmif_file.name.endswith('.mmif'):
-                print(mmif_file)
-                json_file = str(mmif_file)[:-4] + 'json'
-                mmif_summary = Summary(mmif_file.read_text())
-                mmif_summary.report(
-                    outfile=json_file, full=args.full,
-                    timeframes=args.timeframes, transcript=args.transcript,
-                    captions=args.captions, entities=args.entities)
-    elif args.i and args.o:
-        with open(args.i) as fh:
-            mmif_text = fh.read()
-            mmif_summary = Summary(mmif_text)
-            mmif_summary.report(
-                outfile=args.o, full=args.full,
-                timeframes=args.timeframes, transcript=args.transcript,
-                captions=args.captions, entities=args.entities)

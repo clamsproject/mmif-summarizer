@@ -3,6 +3,7 @@
 | [kaldi](kaldi.md)
 | [SWT-DocTR](swt-doctr.md)
 | SWT-Llava
+| [SWT-SmolVLM](swt-smolvlm.md)
 | [spaCy](spacy.md)
 ]
 
@@ -26,7 +27,7 @@ The example file has four views:
 1. An SWT view (v\_0) with the time point classification results with 30,614 TimePoints with label, classification and timePoint attributes.
 2. An SWT view (v\_1) with the stitcher results with 24 TimeFrames with label, classification, targets and representatives attributes (the latter two pointing to the  TimePoints in the previous view). They also all have a timeUnit attribute set to milliseconds. It also has 1 Annotation with framecount, fps and duration.
 2. An SWT view (v\_2) with a warning on frame extraction.
-3. A LLava captioner view (v\_3) with 24 TextDocuments with the transcript and 24 Alignments (to TimeFrames in v_1). The alignments are really understood to be to the TimePoint that is mentioned as the representative for the TimeFrame.
+3. A LLava captioner view (v\_3) with 24 TextDocuments with the caption and 24 Alignments (to TimeFrames in v_1). The alignments are really understood to be to the TimePoint that is mentioned as the representative for the TimeFrame.
 
 Here is a graph with just one TimePoint, one TimeFrame and one added TextDocument:
 

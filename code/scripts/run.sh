@@ -7,48 +7,31 @@
 ## Whisper output
 ## --------------------------------------------------------------------------------------
 
-# v8 directory
-
-python run_summarizer.py --full \
-    -d /Users/Shared/data/clams/mmif-storage/whisper-wrapper/v8/d3253407b97d29df1cfa2ece903c613e
-
 # v8 file
 
 python run_summarizer.py --full \
     -i examples/pipelines/whisper-wrapper-v8/cpb-aacip-507-154dn40c26.mmif \
-    -o examples/pipelines/whisper-wrapper-v8/cpb-aacip-507-154dn40c26.json
-
-python run_html.py \
-    examples/pipelines/whisper-wrapper-v8/cpb-aacip-507-154dn40c26.json \
-    examples/pipelines/whisper-wrapper-v8/pages
+    -o examples/pipelines/whisper-wrapper-v8/cpb-aacip-507-154dn40c26.json \
+    --html examples/pipelines/whisper-wrapper-v8/pages
 
 # v8 smaller file
 
 python run_summarizer.py --full \
     -i examples/pipelines/whisper-wrapper-v8/cpb-aacip-507-154dn40c26.start.mmif \
-    -o examples/pipelines/whisper-wrapper-v8/cpb-aacip-507-154dn40c26.start.bis.json
-
-python run_html.py \
-    examples/pipelines/whisper-wrapper-v8/cpb-aacip-507-154dn40c26.start.bis.json \
-    examples/pipelines/whisper-wrapper-v8/pages-start-bis
+    -o examples/pipelines/whisper-wrapper-v8/cpb-aacip-507-154dn40c26.start.bis.json \
+    --html examples/pipelines/whisper-wrapper-v8/pages-start-bis
 
 # v8-3-g737e280 file
 
 python run_summarizer.py --full \
     -i examples/pipelines/whisper-wrapper-v8-3-g737e280/cpb-aacip-507-154dn40c26.mmif \
-    -o examples/pipelines/whisper-wrapper-v8-3-g737e280/cpb-aacip-507-154dn40c26.json
-
-python run_html.py \
-    examples/pipelines/whisper-wrapper-v8-3-g737e280/cpb-aacip-507-154dn40c26.json \
-    examples/pipelines/whisper-wrapper-v8-3-g737e280/pages
+    -o examples/pipelines/whisper-wrapper-v8-3-g737e280/cpb-aacip-507-154dn40c26.json \
+    --html examples/pipelines/whisper-wrapper-v8-3-g737e280/pages
 
 python run_summarizer.py --full \
     -i examples/pipelines/whisper-wrapper-v8-3-g737e280/cpb-aacip-507-154dn40c26.start.mmif \
-    -o examples/pipelines/whisper-wrapper-v8-3-g737e280/cpb-aacip-507-154dn40c26.start.json
-
-python run_html.py \
-    examples/pipelines/whisper-wrapper-v8-3-g737e280/cpb-aacip-507-154dn40c26.json \
-    examples/pipelines/whisper-wrapper-v8-3-g737e280/pages
+    -o examples/pipelines/whisper-wrapper-v8-3-g737e280/cpb-aacip-507-154dn40c26.start.json \
+    --html examples/pipelines/whisper-wrapper-v8-3-g737e280/pages
 
 
 ## Kaldi output
@@ -70,22 +53,20 @@ python run_summarizer.py --full \
 
 python run_summarizer.py --timeframes \
     -i examples/pipelines/swt-detection-v5.1--doctr-wrapper-v1.1/cpb-aacip-526-z60bv7c69m.mmif \
-    -o examples/pipelines/swt-detection-v5.1--doctr-wrapper-v1.1/cpb-aacip-526-z60bv7c69m.json
+    -o examples/pipelines/swt-detection-v5.1--doctr-wrapper-v1.1/cpb-aacip-526-z60bv7c69m.json \
+    --html examples/pipelines/swt-detection-v5.1--doctr-wrapper-v1.1/pages
 
-python run_html.py \
-    examples/pipelines/swt-detection-v5.1--doctr-wrapper-v1.1/cpb-aacip-526-z60bv7c69m.json \
-    examples/pipelines/swt-detection-v5.1--doctr-wrapper-v1.1/pages
-
-# Testing on the output of the swt-detection/v5.1
+# Testing on the output of swt-detection/v5.1
 
 python run_summarizer.py --timeframes \
     -i examples/pipelines/swt-detection-v5.1/cpb-aacip-526-z60bv7c69m.mmif \
-    -o examples/pipelines/swt-detection-v5.1/cpb-aacip-526-z60bv7c69m.json
+    -o examples/pipelines/swt-detection-v5.1/cpb-aacip-526-z60bv7c69m.json \
+    --html examples/pipelines/swt-detection-v5.1/pages
 
-python run_html.py \
-    examples/pipelines/swt-detection-v5.1/cpb-aacip-526-z60bv7c69m.json \
-    examples/pipelines/swt-detection-v5.1/pages
-
+python run_summarizer.py --timeframes \
+    -i examples/pipelines/swt-detection-v5.1/cpb-aacip-526-z60bv7c69m.start.mmif \
+    -o examples/pipelines/swt-detection-v5.1/cpb-aacip-526-z60bv7c69m.start.json \
+    --html examples/pipelines/swt-detection-v5.1/pages-start
 
 
 ## Llava captioner
@@ -95,20 +76,67 @@ python run_html.py \
 
 python run_summarizer.py --full \
     -i examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.mmif \
-    -o examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.json
+    -o examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.json \
+    --html examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/pages
 
-python run_html.py \
-    examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.json \
-    examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/pages
+# Smaller files
+
+python run_summarizer.py --full \
+    -i examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.start.mmif \
+    -o examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.start.json \
+    --html examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/pages-start
+
+
+python run_summarizer.py --full \
+    -i examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.start.minimal.mmif \
+    -o examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.start.minimal.json \
+    --html examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/pages-start-minimal
+
+python run_summarizer.py --full \
+    -i examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.trimmed.mmif \
+    -o examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.trimmed.json \
+    --html examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/pages-trimmed
+
+python visualize.py --mmif \
+    -i examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.trimmed.mmif \
+    -o out-llava-captioner
+
+python visualize.py --summary \
+    -i examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.trimmed.json \
+    -o out-llava-captioner-sum
+
+
+## smolvlm2 captioner
+## --------------------------------------------------------------------------------------
+
+# swt-detection-v7.7 ⟹ smolvlm2-captioner
+
+python run_summarizer.py --full \
+    -i examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/smolvlm2_fresh_output.mmif \
+    -o examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/smolvlm2_fresh_output.json \
+    --html examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/pages
 
 # Smaller file
 
 python run_summarizer.py --full \
-    -i examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.start.mmif \
-    -o examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.start.json
+    -i examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/smolvlm2_fresh_output.trimmed.mmif \
+    -o examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/smolvlm2_fresh_output.trimmed.json \
+    --html examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/pages-trimmed
 
-python run_html.py \
-    examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/cpb-aacip-225-12z34w2c.start.json \
-    examples/pipelines/swt-detection-v7.4--llava-captioner-v1.2-6-gc824c97/pages-start
+python visualize.py --mmif \
+    -i examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/smolvlm2_fresh_output.trimmed.mmif \
+    -o out-smolvlm-captioner
 
+python visualize.py --graph \
+    -i examples/pipelines/swt-detection-v7.7--smolvlm2-captioner/smolvlm2_fresh_output.trimmed.mmif \
+    -o out-smolvlm-captioner
+
+
+## spacy output
+## --------------------------------------------------------------------------------------
+
+python run_summarizer.py --full \
+    -i examples/pipelines/spacy-wrapper-v1.1/cpb-aacip-507-9882j68s35-transcript.mmif \
+    -o examples/pipelines/spacy-wrapper-v1.1/cpb-aacip-507-9882j68s35-transcript.json \
+    --html examples/pipelines/spacy-wrapper-v1.1/pages
 
