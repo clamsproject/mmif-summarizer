@@ -26,7 +26,7 @@ For now we also do this in a clean virtual environment with standard Python tool
 $ pip install build==1.3.0 twine==6.2.0
 ```
 
-With older twine versions you can get into errors where the package has a too recent metadata version. This can also happen if you have an older system installation and you use a build environment without twine (sounds far-fetched but eactly that happened to me).
+With older twine versions you can get into errors where the package has a metadata version that is  too recent. This can also happen if you have an older system installation and you use a build environment without twine (sounds far-fetched but exactly that happened to me).
 
 We may move to using `uv build` and `uv publish`, but the potential interactions with the non-uv Python and Pip environment are too confusing to me at the moment.
 

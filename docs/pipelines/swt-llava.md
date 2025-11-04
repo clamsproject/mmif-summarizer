@@ -1,4 +1,4 @@
-[ [developer notes](../developer-notes.md)
+[ [home](../developer-notes.md)
 | [whisper](whisper.md)
 | [kaldi](kaldi.md)
 | [SWT-DocTR](swt-doctr.md)
