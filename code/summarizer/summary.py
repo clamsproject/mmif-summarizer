@@ -652,8 +652,6 @@ class Captions(Nodes):
                           'time-point': doc.anchors['time-point'],
                           'text': text })
 
-                   
-
     def as_json(self):
         return self.captions
         #return [(ident, p1, p2, text) for ident, p1, p2, text in self.captions]

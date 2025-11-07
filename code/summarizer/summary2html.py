@@ -22,6 +22,7 @@ VIEWS_PAGE = 'views.html'
 TIMEFRAMES_PAGE = 'timeframes.html'
 TRANSCRIPT_PAGE = 'transcripts.html'
 CAPTIONS_PAGE = 'captions.html'
+ENTITIES_PAGE = 'entities.html'
 
 
 # Some XML tag attributes
@@ -88,11 +89,13 @@ def create_html(infile: str, outdir: str):
         page.write_section_end()
 
     def write_content(page, summary):
+        # TODO: use math.isnan() to avoid printing "nan" in the page
         video_length = summary['document'].get('duration_ms', float('nan'))
         if 'timeframe_stats' in summary and summary['timeframe_stats']:
             page.write_section('Content')
             # TODO: this should be wrapped in a div or a table with one row
             for app in summary['timeframe_stats']:
+                page.write(f'<p><a href="{app}">{app}</a></p>\n')
                 stats = summary['timeframe_stats'][app]
                 page.write('<table>\n')
                 page.write('<tr>\n')
@@ -149,6 +152,9 @@ def create_html(infile: str, outdir: str):
     if 'captions' in summary:
         add_index_link(page, summary, 'captions', CAPTIONS_PAGE)
         create_html_captions(infile, outpath, summary)
+    if 'entities' in summary:
+        add_index_link(page, summary, 'entities', ENTITIES_PAGE)
+        create_html_entities(infile, outpath, summary)
     page.write(']\n')
     page.write_section_end()
     page.write_to_file()
@@ -258,8 +264,6 @@ def create_html_timeframes(infile: str, outpath: Path, summary: dict):
     page = Html(infile, outpath / TIMEFRAMES_PAGE, 'Timeframes')
     for app in summary['timeframes']:
         page.write_section(app)
-        #page.write(f'<h4>{app}</h4>\n\n')
-        #page.write('<blockquote>\n')
         page.write('<table class=transcript>\n')
         page.write_tr(('start', 'end', 'reps', 'label', 'score'))
         for tf in summary['timeframes'][app]:
@@ -271,7 +275,6 @@ def create_html_timeframes(infile: str, outpath: Path, summary: dict):
                 (t1, t2, ' '.join(reps), tf['label'], score))
         page.write('</table>\n')
         page.write_section_end()
-        #page.write('</blockquote>\n\n')
         page.write_to_file()
 
 
@@ -294,6 +297,49 @@ def create_html_captions(infile: str, outpath: Path, summary: dict):
         text = caption['text'].replace('\n', '<br/>')
         tp = utils.timestamp(caption['time-point'])
         page.write_tr(((tp, a_topleft), (caption['identifier'], a_top), text))
+    page.write('</table>\n')
+    page.write('</div>\n')
+    page.write_to_file()
+
+
+def create_html_entities(infile: str, outpath:Path, summary: dict):
+    # TODO: print these for each TextDocument?
+    # TODO: or maybe have that as a user option?
+    # The set below could be a default for what categories are displayed, maybe
+    # later as an option in the interface where the user could check all desired
+    # categories.
+    included_categories = {'PERSON', 'ORG', 'DATE', 'GPE', 'NORP', 'LANGUAGE'}
+    def get_location(instance) -> tuple:
+        time_point = ''
+        start = ''
+        end = ''
+        if 'time-point' in instance and instance['time-point'] != -1:
+            time_point = utils.timestamp(instance['time-point'])
+        if 'text-offsets' in instance:
+            start = str(instance["text-offsets"][0])
+            end = str(instance["text-offsets"][1])
+        return (time_point, start, end)
+    page = Html(infile, outpath / ENTITIES_PAGE, 'Entities')
+    page.write('<div class=section>\n')
+    page.write(f'<p>Only printing the following entity types:')
+    page.write(f' {", ".join(included_categories)}.</p>\n\n')
+    page.write('<table>\n')
+    page.write_tr(['', 'category', 'time', 'doc', 'start', 'end'])
+    for entity in summary['entities']:
+        #print(entity['text'], len(entity['instances']))
+        text = entity['text'].replace('\n', ' ').replace(' ', '&nbsp;')
+        instances = entity['instances']
+        instances = [inst for inst in instances if inst['cat'] in included_categories]
+        if instances:
+            tp, p1, p2 = get_location(instances[0])        
+            page.write_tr([
+                (text, a_top), instances[0]['cat'], tp,
+                instances[0]['document'], (p1, a_right), (p2, a_right)])
+            for inst in instances[1:]:
+                tp, p1, p2 = get_location(inst)
+                page.write_tr([
+                    '', inst['cat'], tp,
+                    inst['document'], (p1, a_right), (p2, a_right)])
     page.write('</table>\n')
     page.write('</div>\n')
     page.write_to_file()

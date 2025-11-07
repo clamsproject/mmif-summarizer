@@ -35,7 +35,7 @@ def get_transcript_view(views):
 
 
 def get_captions_view(views):
-    """Return the last view created by the a captioner."""
+    """Return the last view created by the captioner."""
     for view in reversed(views):
         if view.metadata.app in CAPTIONER:
             if view.metadata.warnings:
@@ -68,7 +68,9 @@ def get_aligned_tokens(view):
 
 
 def timestamp(milliseconds: int, format='hh:mm:ss'):
-    # sometimes the milliseconds are a float
+    # sometimes the milliseconds are not a usable float
+    if milliseconds in (None, -1):
+        return 'nil'
     milliseconds = int(milliseconds)
     seconds = milliseconds // 1000
     minutes = seconds // 60
@@ -191,22 +193,25 @@ def xml_data(text):
     return escape(str(text))
 
 
-def flatten_paths(paths):
+def XXXflatten_paths(paths):
     """Take paths implemented as singly linked lists and return regular lists."""
     return [flatten_path(path) for path in paths]
 
 
-def flatten_path(path):
+def XXXflatten_path(path):
     """Take a path implemented as singly linked lists and return a regular list."""
     while path:
         if len(path) == 1:
             return path
         else:
+            #print('>>>', len(path))
+            #for x in path:
+            #    print('  ', x)
             first, rest = path
             return [first] + flatten_path(rest)
 
 
-def print_paths(paths, indent=''):
+def XXXprint_paths(paths, indent=''):
     """Print paths, which may be flattened."""
     for path in paths:
         print(indent, end='')
@@ -214,7 +219,7 @@ def print_paths(paths, indent=''):
         print()
 
 
-def print_path(p):
+def XXXprint_path(p):
     if isinstance(p, list):
         print('[', end=' ')
         for e in p:

@@ -7,7 +7,9 @@ import argparse
 from mmif import Mmif
 
 from summarizer import config
-from summarizer.utils import compose_id, flatten_paths, normalize_id
+from summarizer.utils import compose_id, normalize_id
+#from summarizer.utils import compose_id, flatten_paths, normalize_id
+
 
 
 class Graph(object):
@@ -32,7 +34,9 @@ class Graph(object):
         tokens = self.get_nodes(config.TOKEN)
         entities = self.get_nodes(config.NAMED_ENTITY)
         self.token_idx = TokenIndex(tokens)
+        #self.token_idx.pp()
         for e in entities:
+            #print('>>>', e, e.anchors)
             e.tokens = self.token_idx.get_tokens_for_node(e)
 
     def _init_nodes(self):
@@ -76,10 +80,8 @@ class Graph(object):
         if target.annotation.at_type.shortname in (config.TOKEN, config.TEXT_DOCUMENT):
             source, target = target, source
         source.targets.append(target)
-        #if target_id == "v_3:td_1":
-        #    source.set_alignment_anchors(target, debug=True)
-        source.set_alignment_anchors(target)
-        target.set_alignment_anchors(source)
+        source.add_anchors_from_alignment(target)
+        target.add_anchors_from_alignment(source)
 
     def get_node(self, node_id):
         return self.nodes.get(node_id)
@@ -139,11 +141,19 @@ class TokenIndex(object):
     in and for each text document we have a list of <offsets, Node> pairs
 
     {'v_4:td1': [
-        ((0, 5), <__main__.Node object at 0x1039996d0>),
-        ((5, 6), <__main__.Node object at 0x103999850>),
+        ((0, 5), <summarizer.graph.Node object at 0x1039996d0>),
+        ((5, 6), <summarizer.graph.Node object at 0x103999850>),
         ...
     }
     """
+
+    # TODO: 
+    # - Benchmark get_tokens_for_node(). I may want to use something like this
+    #   to  determine enclosed nodes and enclosing nodes and that may blow up since
+    #   that would be O(n^2). If it does matter, probably start using binary search
+    #   or add an index from character offset to nodes.
+    # - It is also not sure whether we still need this since the new spaCy gives
+    #   targets to tokens.
 
     def __init__(self, tokens):
         self.tokens = {}
@@ -162,17 +172,16 @@ class TokenIndex(object):
         return self.token_count
 
     def __str__(self):
-        return f'<TokenIndex on with {len(self)} tokens>'
+        return f'<TokenIndex with {len(self)} tokens>'
 
-    # TODO: benchmark this method. I may want to use something like this to 
-    # determine encloced nodes and enclosing nodes and that may blow up since
-    # that would be O(n^2). If it does matter, probably start using binary
-    # search or add an index from character offset to nodes.
     def get_tokens_for_node(self, node):
         """Return all tokens included in the span of a node."""
         doc = node.document.identifier
-        start = node.properties['start']
-        end = node.properties['end']
+        try:
+            start = node.properties['start']
+            end = node.properties['end']
+        except KeyError:
+            start, end = node.anchors['text-offsets']
         tokens = []
         for (t_start, t_end), token in self.tokens.get(doc, []):
             if t_start >= start and t_end <= end:
@@ -207,37 +216,60 @@ class Node(object):
         # TODO: the above does not seem to be true since there is no evidence of
         # data from alignments being added.
         self.targets = [] if self.document is None else [self.document]
-        self.set_local_anchors()
+        self.anchors = {}
+        self.add_local_anchors()
+        self.add_anchors_from_targets()
 
-    def set_local_anchors(self):
-        """Set the anchors that you can get from the annotation itself, which 
-        includes the start and end offsets, the coordinates and the timePoint of
-        a BoundingBox."""
-        # TODO: start/end in time frames now does the wrong thing
-        # TODO: should probably be overridden on subtypes
+    def __str__(self):
+        anchor = ''
+        if self.at_type.shortname == config.TOKEN:
+            anchor = " %s:%s '%s'" % (self.properties['start'],
+                                      self.properties['end'],
+                                      self.properties.get('text','').replace('\n', '\\n'))
+        return "<%s %s%s>" % (self.at_type.shortname, self.identifier, anchor)
+
+    def add_local_anchors(self):
+        """Get the anchors that you can get from the annotation itself, which 
+        includes the start and end offsets, the coordinates, the timePoint of
+        a BoundingBox and any annotation with targets."""
         props = self.properties
         attype = self.annotation.at_type.shortname
-        self.anchors = {}
         if 'start' in props and 'end' in props:
-            self.anchors['text-offsets'] = (props['start'], props['end'])
+            # TimeFrame is the only non-character based interval so this simple
+            # if-then-else should work
+            if attype == config.TIME_FRAME:
+                self.anchors['text-offsets'] = (props['start'], props['end'])
+            else:
+                self.anchors['time-offsets'] = (props['start'], props['end'])
         if 'coordinates' in props:
             self.anchors['coordinates'] = props['coordinates']
         if 'timePoint' in props:
             self.anchors['time-point'] = props['timePoint']
         if 'targets' in props:
-            # TODO: this is a placeholder, should get the targets and
-            # find start/end properties
             self.anchors['targets'] = props['targets']
-        if attype == 'TimeFrame' and "targets" in props:
-            tp1 = self.graph.nodes[props['targets'][0]]
-            tp2 = self.graph.nodes[props['targets'][-1]]
-            self.anchors['time-offsets'] = (
-                tp1.properties['timePoint'], tp2.properties['timePoint'])
-        if not self.anchors and not attype.endswith('Document'):
-            if attype != 'Annotation':
-                print('set_local_anchors', attype, self, self.properties.keys())
 
-    def set_alignment_anchors(self, target: None, debug=False):
+    def add_anchors_from_targets(self):
+        """Get start and end offsets or timePoints from the targets and add them to
+        the anchors, but only if there were no anchors on the node already. This has
+        two cases: one for TimeFrames and one for text intervals."""
+        props = self.properties
+        attype = self.annotation.at_type.shortname
+        if 'targets' in props:
+            try:
+                t1 = self.graph.nodes[props['targets'][0]]
+                t2 = self.graph.nodes[props['targets'][-1]]
+                if attype == config.TIME_FRAME:
+                    if not 'time-offsets' in props:
+                        self.anchors['time-offsets'] = (
+                            t1.properties['timePoint'], t2.properties['timePoint'])
+                else:
+                    if not 'text-offsets' in props:
+                        self.anchors['text-offsets'] = (
+                            t1.properties['start'], t2.properties['end'])
+            except IndexError:
+                print(f'WARNING: Unexpected empty target list for {self.identifier}')
+
+    def add_anchors_from_alignment(self, target: None, debug=False):
         source_attype = self.at_type.shortname
         target_attype = target.at_type.shortname
         if debug:
@@ -305,14 +337,6 @@ class Node(object):
         #if debug:
         #    print('DEBUG', self.anchors)
 
-    def __str__(self):
-        anchor = ''
-        if self.at_type.shortname == config.TOKEN:
-            anchor = " %s:%s '%s'" % (self.properties['start'],
-                                      self.properties['end'],
-                                      self.properties.get('text'))
-        return "<%s %s%s>" % (self.at_type.shortname, self.identifier, anchor)
-
     def _get_document(self):
         """Return the document or annotation node that the annotation/document in
         the node refers to via the document property. This could be a local property
@@ -333,17 +357,18 @@ class Node(object):
                 return None
         return None
 
-    def _get_document_plus_span(self):
+    def XXX_get_document_plus_span(self):
+        self.pp()
         props = self.properties
         return "%s:%s:%s" % (self.document.identifier,
                              props['start'], props['end'])
 
-    def paths_to_docs(self):
+    def XXXpaths_to_docs(self):
         """Return all the paths from the node to documents."""
         paths = self._paths_to_docs()
         return flatten_paths(paths)
 
-    def _paths_to_docs(self):
+    def XXX_paths_to_docs(self):
         paths = []
         if not self.targets:
             return [[self]]
@@ -358,15 +383,20 @@ class Node(object):
         overriden by sub classes."""
         return { 'id': self.identifier }
 
-    def pp(self):
+    def pp(self, close=True):
         print('-' * 80)
         print(self)
+        print(f'    document = {self.document}')
         for prop in self.properties:
-            print(f'  {prop} = {self.properties[prop]}')
-        print('  targets = ')
+            print(f'    {prop} = {self.properties[prop]}')
+        print('    targets = ')
         for target in self.targets:
-            print('   ', target)
-        print('-' * 80)
+            print('       ', target)
+        print('    anchors = ')
+        for anchor in self.anchors:
+            print(f'        {anchor} -> {self.anchors[anchor]}')
+        if close:
+            print('-' * 80)
 
 
 class TimeFrameNode(Node):
@@ -415,37 +445,59 @@ class EntityNode(Node):
         self._anchor = None
 
     def __str__(self):
-        return ("<NamedEntityNode %s %s:%s %s>"
-                % (self.identifier,
-                   self.properties['start'],
-                   self.properties['end'],
-                   self.properties['text']))
+        try:
+            start = self.properties['start']
+            end = self.properties['end']
+        except KeyError:
+            start, end = self.anchors['text-offsets']
+        return ("<NamedEntityNode %s %s:%s '%s'>"
+                % (self.identifier, start, end, self.properties['text']))
 
     def start_in_video(self):
-        return self.anchor()['video-start']
+        #print('+++', self.document.properties)
+        try:
+            return self.document.anchors['time-point']
+        except KeyError:
+            return -1
+        #return self.anchor()['video-start']
 
     def end_in_video(self):
         return self.anchor().get('video-end')
 
     def pp(self):
-        print(self)
-        print('  %s' % ' '.join([str(t) for t in self.tokens]))
-        for i, p in enumerate(self.paths_to_docs()):
-            print('  %s' % ' '.join([str(n) for n in p[1:]]))
+        super().pp(close=False)
+        try:
+            for i, p in enumerate(self.paths_to_docs()):
+                print('    %s' % ' '.join([str(n) for n in p[1:]]))
+        except ValueError:
+            print('    WARNING: error in path_to_docs in NamedEntityNode.pp()')
+        print('-' * 80)
 
     def summary(self):
         """The summary for entities needs to include where in the video or image
         the entity occurs, it is not enough to just give the text document."""
-        anchor = self.anchor()
+        # TODO: in the old days this used an anchor() method which was fragile
+        # TODO: revamping it now  
+
+        #anchor = self.anchor()
+        #self.document.pp()
+#        print('...', self.document.anchors
         return {
             'id': self.identifier,
             'group': self.properties['group'],
             'cat': self.properties['category'],
-            'tag': self.properties.get('tag'),
-            'document': self._get_document_plus_span(),
-            'video-start': anchor.get('video-start'),
-            'video-end': anchor.get('video-end'),
-            'coordinates': self._coordinates_as_string(anchor)}
+            'document': self.document.identifier,
+            # Entities in a TextDocument that is a full transcript without any
+            # alignments do not have a TimePoint
+            #'time-point': self.document.anchors.get('time-point'),
+            #'text-offsets': self.anchors.get('text-offsets'),
+            'time-point': self.document.anchors.get('time-point', -1),
+            'text-offsets': self.anchors.get('text-offsets', (-1 ,-1)),
+            #'document': self._get_document_plus_span(),
+            #'video-start': anchor.get('video-start'),
+            #'video-end': anchor.get('video-end'),
+            #'coordinates': self._coordinates_as_string(anchor)
+            }
 
     def anchor(self):
         """The anchor is the position in the video that the entity is linked to.

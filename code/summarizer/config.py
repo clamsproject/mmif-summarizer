@@ -24,7 +24,8 @@ CAPTIONER = [
     'http://apps.clams.ai/smolvlm2-captioner']
 
 NER = [
-    'http://apps.clams.ai/spacy-wrapper/v1.1']
+    'http://apps.clams.ai/spacy-wrapper/v1.1',
+    'http://apps.clams.ai/spacy-wrapper/v2.1']
 
 SEGMENTER = 'http://apps.clams.ai/audio-segmenter'
 
@@ -67,6 +68,10 @@ ALIGNMENT = AnnotationTypes.Alignment.shortname
 ANNOTATION = 'Annotation'
 TOKEN = 'Token'
 SENTENCE = 'Sentence'
-SEMANTIC_TAG = 'SemanticTag'
+PARAGRAPH = 'Paragraph'
 NAMED_ENTITY = 'NamedEntity'
+NOUN_CHUNK = 'NounChunk'
+VERB_CHUNK = 'VerbChunk'
 
+TIME_BASED_INTERVALS = {TIME_FRAME}
+SPAN_BASED_INTERVALS = {TOKEN, SENTENCE, PARAGRAPH, NAMED_ENTITY, NOUN_CHUNK, VERB_CHUNK}
