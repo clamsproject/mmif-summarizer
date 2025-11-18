@@ -51,10 +51,8 @@ and captions.
 
 -- timeframes
 
-Shows basic information of all timeframes.
-
-This does not group the timeframes according to apps. There used to be settings to
-just get chyrons or segments or bars-and-tone frames, but those have been retired.
+Shows basic information of all timeframes. This groups the timeframes according to
+the apps it was found in.
 
 --transcript
 
@@ -246,6 +244,8 @@ class Document(object):
             'size': os.path.getsize(summary.fname) }
         annotations = summary.annotations.get_all_annotations()
         if annotations:
+            # TODO: this if fragile because it assumes that the annotation we want
+            # (which is the one from SWT) is always the first
             doc_level_annotation = annotations[0]
             if 'fps' in doc_level_annotation:
                 self.data['fps'] = doc_level_annotation['fps']

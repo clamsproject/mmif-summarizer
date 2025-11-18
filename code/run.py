@@ -67,15 +67,20 @@ def summarize(directory: str):
     Path(outdir, 'pages').mkdir(exist_ok=True)
     create_index_file(Path(outdir, 'pages'))
     create_log_file(Path(outdir, 'log.txt'))
+    links = {}
     for root, dirs, files in os.walk(directory, topdown=False):
-        for name in files:
+        for name in sorted(files):
             # Just taking the basic MMIF files, no funny business
             if name.endswith('.mmif') and name.count('.') == 1:
                 mmif_file = Path(os.path.join(root, name))
-                summarize_file(mmif_file, outdir)
+                # Create a summary and save it, and add information on the summary
+                # to the links dictionary 
+                summarize_file(mmif_file, outdir, links)
+    for fname in sorted(links):
+        add_link_to_index_file(outdir, fname, links)
 
 
-def summarize_file(mmif_file: Path, outdir: Path):
+def summarize_file(mmif_file: Path, outdir: Path, links: dict):
     mmif_file_hash = abs(hash(mmif_file))
     json_file = Path(outdir, 'summaries', mmif_file.stem + '.json')
     html_dir = Path(outdir, 'pages', str(mmif_file_hash))
@@ -85,7 +90,10 @@ def summarize_file(mmif_file: Path, outdir: Path):
         sep = "=" * 100
         fh.write(f'\n{sep}\n{command_as_pretty_string(command)}\n{sep}\n\n')
     run_command(outdir, command)
-    add_link_to_index_file(Path(outdir, 'pages'), mmif_file, mmif_file_hash)
+    pipeline_name, file_name, mmif_file_hash = \
+        create_link_for_index_file(mmif_file, mmif_file_hash)
+    links[file_name] = (pipeline_name, mmif_file_hash)
+    #add_link_to_index_file(Path(outdir, 'pages'), mmif_file, mmif_file_hash)
 
 
 def create_command(infile, outfile, outdir):
@@ -133,15 +141,22 @@ def create_log_file(log_file):
     log_file.write_text(f'{str(datetime.datetime.now())}\n\n')
 
 
-def add_link_to_index_file(pages_dir, mmif_file, mmif_file_hash):
-    index_file = Path(pages_dir, 'index.html')
+def create_link_for_index_file(mmif_file, mmif_file_hash):
+    """Return a tuple with all components needed for a link."""
     print_name = str(mmif_file)
     if print_name.startswith('examples/pipelines'):
         print_name = print_name[19:]
     pipeline_name, file_name = print_name.split(os.sep)
+    link = f'<a href={mmif_file_hash}/index.html>{file_name}</a>'
+    return pipeline_name, file_name, mmif_file_hash
+
+
+def add_link_to_index_file(outdir: str, fname: str, links: dict):
+    pipeline_name, mmif_file_hash = links[fname]
+    link = f'<a href={mmif_file_hash}/index.html>{fname}</a>'
+    index_file = Path(outdir, 'pages', 'index.html')
     with index_file.open("a") as fh:
-        href = f'<a href={mmif_file_hash}/index.html>{file_name}</a>'
-        fh.write(f'<tr><td>{pipeline_name}<td>{href}</tr>\n')
+        fh.write(f'<tr><td>{pipeline_name}<td>{link}</tr>\n')
 
 
 def argparser():

@@ -30,14 +30,6 @@ NER = [
 SEGMENTER = 'http://apps.clams.ai/audio-segmenter'
 
 
-# Bounding boxes have a time point, but what we are looking for below is to find
-# a start and an end in the video so we manufacture an end point. Set to 1000ms
-# because Tesseract samples every second
-# TODO: this is not used anymore, probably needs to be re-introduced
-
-MINIMAL_TIMEFRAME_LENGTH = 1000
-
-
 # When a named entity occurs 20 times we do not want to generate 20 instances of
 # it. If the start of the next entity occurs within the below number of
 # milliseconds after the end of the previous, then it is just added to the

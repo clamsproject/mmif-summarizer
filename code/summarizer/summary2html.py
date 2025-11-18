@@ -20,6 +20,7 @@ CSS_PAGE = 'main.css'
 JS_PAGE = 'main.js'
 VIEWS_PAGE = 'views.html'
 TIMEFRAMES_PAGE = 'timeframes.html'
+CORRELATIONS_PAGE = 'timeframes-corr.html'
 TRANSCRIPT_PAGE = 'transcripts.html'
 CAPTIONS_PAGE = 'captions.html'
 ENTITIES_PAGE = 'entities.html'
@@ -145,7 +146,9 @@ def create_html(infile: str, outdir: str):
     create_html_views(infile, outpath, summary)
     if 'timeframes' in summary:
         add_index_link(page, summary, 'timeframes', TIMEFRAMES_PAGE)
-        create_html_timeframes(infile, outpath, summary)        
+        add_index_link(page, summary, 'timeframes', CORRELATIONS_PAGE, name='correlations')
+        create_html_timeframes(infile, outpath, summary)
+        create_html_correlations(infile, outpath, summary)
     if 'transcript' in summary:
         add_index_link(page, summary, 'transcript', TRANSCRIPT_PAGE)
         create_html_transcript(infile, outpath, summary)
@@ -160,9 +163,10 @@ def create_html(infile: str, outdir: str):
     page.write_to_file()
 
 
-def add_index_link(page, summary, summary_part, part_page):
+def add_index_link(page, summary, summary_part, part_page, name=None):
+    name = summary_part if name is None else name
     if summary[summary_part]:
-        page.write(f'| <a href="{part_page}">{summary_part.capitalize()}</a>\n')
+        page.write(f'| <a href="{part_page}">{name.capitalize()}</a>\n')
 
 
 def create_resources(outpath):
@@ -264,7 +268,7 @@ def create_html_timeframes(infile: str, outpath: Path, summary: dict):
     page = Html(infile, outpath / TIMEFRAMES_PAGE, 'Timeframes')
     for app in summary['timeframes']:
         page.write_section(app)
-        page.write('<table class=transcript>\n')
+        page.write('<table>\n')
         page.write_tr(('start', 'end', 'reps', 'label', 'score'))
         for tf in summary['timeframes'][app]:
             t1 = utils.timestamp(tf['start-time'])
@@ -275,7 +279,53 @@ def create_html_timeframes(infile: str, outpath: Path, summary: dict):
                 (t1, t2, ' '.join(reps), tf['label'], score))
         page.write('</table>\n')
         page.write_section_end()
-        page.write_to_file()
+    page.write_to_file()
+
+
+def create_html_correlations(infile: str, outpath: Path, summary: dict):
+    page = Html(infile, outpath / CORRELATIONS_PAGE, 'Correlations')
+    for app1 in summary['timeframes']:
+        for app2 in summary['timeframes']:
+            if app1 == app2:
+                continue
+            app1_name = '/'.join(Path(app1).parts[-2:])
+            app2_name = '/'.join(Path(app2).parts[-2:])
+            page.write_section(f'{app1_name} &#8596; {app2_name}')
+            count1 = collect_observations(app1, summary)
+            count2 = collect_observations(app2, summary)
+            pairs = set()
+            observations = {}
+            page.write('<table class=transcript>\n')
+            for key1 in sorted(count1):
+                for key2 in sorted(count2):
+                    if (key1, key2) in pairs:
+                        continue
+                    pairs.add((key1, key2))
+                    pairs.add((key2, key1))
+                    jacc = jaccard(count1[key1], count2[key2])
+                    if jacc > 0.001:
+                        class_ = 'bold' if jacc > 0.2 else 'normal'
+                        page.write_tr((key1, key2, f'{jacc:.5f}'), attrs={'class': class_})
+            page.write('</table>\n')
+            page.write_section_end()
+    page.write_to_file()
+
+
+def collect_observations(app: str, summary: dict):
+    from collections import defaultdict
+    result = defaultdict(set)
+    for tf in summary['timeframes'][app]:
+        #for tp in range(tf['start-time'], tf['end-time'], 1000):
+        for tp in range(round(tf['start-time'] / 1000), round(tf['end-time'] / 1000)):
+            result[tf['label']].add(tp)
+    return result
+
+
+def jaccard(s1, s2):
+    intersection = s1.intersection(s2)
+    union = s1.union(s2)
+    #print (len(intersection), len(union))
+    return (len(intersection) / len(union))
 
 
 def create_html_transcript(infile: str, outpath: Path, summary: dict):
