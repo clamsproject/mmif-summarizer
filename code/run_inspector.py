@@ -1,11 +1,14 @@
 """
 
-Calls the main summarizer code in the package.
+Calls the main code in the inspector package.
 
-See summarizer/summary.py to see what options to use.
+Usage:
+
+$ python create_html.py -i INPUT_SUMMARY_FILE -o OUTPUT_HTML_DIRECTORY
 
 """
 
-from summarizer import summary2html
 
-summary2html.main()
+import inspector
+
+inspector.main()

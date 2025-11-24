@@ -1,11 +1,14 @@
 """
 
-Calls the main summarizer code in the package.
+Calls the main code in the summarizer package.
 
-See summarizer/summary.py to see what options to use.
+Usage:
+
+Type "python run_summarizer.py -h " or see summarizer/summary.py to see what
+options to use.
 
 """
 
-from summarizer import create_summary
+import summarizer
 
-create_summary()
+summarizer.main()

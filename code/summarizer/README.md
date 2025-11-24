@@ -19,12 +19,10 @@ This package comes with a command line script to create a JSON summary of a MMIF
 ### Creating a summary
 
 ```bash
-$ summarize --full -i MMIF_FILE -o JSON_FILE --html HTML_DIR
+$ summarize --full -i MMIF_FILE -o JSON_FILE
 ```
 
-This creates a full summary, including transcript, captions and time frames. If you use the --html option a directory will be created with an index file and files for the views, transcript, captions and time frames. 
-
-To see all options run the command with the -h option.
+This creates a full summary, including transcript, captions and time frames. To see all options run the command with the -h option.
 
 From the Python prompt you can do this:
 
@@ -47,5 +45,4 @@ TODO: this should be pinned to a fixed file.
 
 Things to be added soon:
 
-- Add summary for entities recognized by spaCy.
 - Add JSON schema for the output.

@@ -44,11 +44,6 @@ OPTIONS:
 
 Run the summarizer over a single MMIF file and write the JSON summary to OUTFILE.
 
---html HTML_DIR
-
-Generate a mini website in HTML_DIR with pages for views, timeframes, transcript
-and captions.
-
 -- timeframes
 
 Shows basic information of all timeframes. This groups the timeframes according to
@@ -66,13 +61,19 @@ text occurrence.
 
 Shows captions from the Llava captioner app.
 
+--entities
 
-TODO:
+Include entities from spaCy or other NER.
 
-- For the time unit we should really update get_start(), get_end() and other methods.
-- Add the entities back in
+--full
+
+Include all the above.
 
 """
+
+# TODO:
+# - For the time unit we should really update get_start(), get_end() and other methods.
+
 
 import os, sys, io, json, argparse, pathlib
 from collections import defaultdict
@@ -84,7 +85,6 @@ from summarizer.utils import CharacterList
 from summarizer.utils import get_aligned_tokens, timestamp
 from summarizer.utils import get_transcript_view, get_last_segmenter_view, get_captions_view
 from summarizer.graph import Graph
-from summarizer.summary2html import create_html
 from summarizer import config
 
 
@@ -173,8 +173,6 @@ class Summary(object):
         else:
             with open(outfile, 'w') as fh:
                 fh.write(report)
-        if html:
-            create_html(outfile, html)
 
     def print_warnings(self):
         for warning in self.warnings:

@@ -1,8 +1,12 @@
 """
 
-python create_html.py SUMMARY DIRECTORY
+python create_html.py -i INPUT_SUMMARY_FILE -o OUTPUT_HTML_DIRECTORY
+
+Generate a mini website in HTML_DIR with pages for views, timeframes, transcript
+and captions.
 
 """
+
 
 import os
 import io
@@ -11,31 +15,13 @@ import json
 import math
 from pathlib import Path
 
-from summarizer import utils
+from inspector import utils
 
+from inspector.config import INDEX_PAGE, CSS_PAGE, JS_PAGE, VIEWS_PAGE
+from inspector.config import TIMEFRAMES_PAGE, CORRELATIONS_PAGE, TRANSCRIPT_PAGE
+from inspector.config import CAPTIONS_PAGE, ENTITIES_PAGE
+from inspector.config import a_right, a_topleft, a_top, hide
 
-# Pages for the mini-web site
-INDEX_PAGE = 'index.html'
-CSS_PAGE = 'main.css'
-JS_PAGE = 'main.js'
-VIEWS_PAGE = 'views.html'
-TIMEFRAMES_PAGE = 'timeframes.html'
-CORRELATIONS_PAGE = 'timeframes-corr.html'
-TRANSCRIPT_PAGE = 'transcripts.html'
-CAPTIONS_PAGE = 'captions.html'
-ENTITIES_PAGE = 'entities.html'
-
-
-# Some XML tag attributes
-a_right = 'align=right'
-a_topleft = 'align=right valign=top'
-a_top = 'valign=top'
-hide = 'style="display: none"'
-
-
-def main():
-    infile, outdir = sys.argv[1:3]
-    create_html(infile, outdir)
 
 
 def create_html(infile: str, outdir: str):

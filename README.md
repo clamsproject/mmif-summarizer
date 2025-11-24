@@ -21,14 +21,14 @@ The summarizer is implemented as a Python package. If you have installed the pac
 The summarizer creates a JSON summary, and optionally turns it into a mini webpage. After installing the module you can run the code as follows:
 
 ```bash
-$ summarize --full -i MMIF_FILE -o JSON_FILE --html HTML_DIR
+$ summarize --full -i MMIF_FILE -o JSON_FILE
 ```
 
 For development you can run the code from this repository using the run script:
 
 ```bash
 $ cd code
-$ python run_summarizer.py --full -i MMIF_FILE -o JSON_FILE --html HTML_DIR
+$ python run_summarizer.py --full -i MMIF_FILE -o JSON_FILE
 ```
 
 
