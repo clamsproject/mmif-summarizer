@@ -86,3 +86,7 @@ td {
     border: 0px;
     padding: 4px;
 }
+
+.bold {
+    font-weight: bold;
+}
