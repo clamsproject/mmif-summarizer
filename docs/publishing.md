@@ -14,7 +14,6 @@ code/summarizer/
 ├── graph.py
 ├── README.md
 ├── summary.py
-├── summary2html.py
 └── utils.py
 ```
 
@@ -55,12 +54,11 @@ license-files = ["LICEN[CS]E*"]
 
 **Project scripts**
 
-We want to have access to shell scripts named `summarize` and `create-html`.
+We want to have access to a shell script named `summarize` and hook it up to some specific Python code.
 
 ```toml
 [project.scripts]
-summarize = "summarizer:create_summary"
-create-html = "summarizer:create_html"
+summarize = "summarizer:main"
 ```
 
 **The build system**
@@ -244,7 +242,7 @@ But that way is now deprecated.
 
 I tried this by adding an image at the same level as the description file and link to it from the description file. The problem is that this cannot be relative link. So instead save the image somewhere else in the repo (not in the package code so it does not clog up the package) and then link to it with an absolute path. To get the image's raw link on GitHub, right-click the image and choose "Copy image address". See [https://glasnt.com/blog/new-images/](https://glasnt.com/blog/new-images/) and [how-do-i-add-images-to-a-pypi-readme-that-works-on-github](https://stackoverflow.com/questions/41983209/how-do-i-add-images-to-a-pypi-readme-that-works-on-github) on stackoverflow.
 
-The right-cliking does not work really, but here is the general recipe for the image name:
+The right-clicking does not work really, but here is the general recipe for the image name:
 
 ```
 https://raw.githubusercontent.com/<github_username>/<repository_name>/<branch_name>/<image_name>
