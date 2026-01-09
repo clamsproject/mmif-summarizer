@@ -1,3 +1,17 @@
+"""
+
+Removing much of the summarizer code since it is now in the MMIF utilities in
+
+    https://github.com/clamsproject/mmif-python
+
+This file was kept here for now but will be removed soon.
+
+The contents of README.md will need to be added to mmif-python in some form
+
+All other code files in this package were already deleted.
+
+"""
+
 
 import argparse
 
