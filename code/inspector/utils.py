@@ -1,6 +1,4 @@
 
-# Copied from summarizer.utils
-
 def timestamp(milliseconds: int, format='hh:mm:ss'):
     # sometimes the milliseconds are not a usable float
     if milliseconds in (None, -1):

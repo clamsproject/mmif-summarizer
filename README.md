@@ -1,4 +1,6 @@
-# Summarizing MMIF
+# MMIF Inspector
+
+> This repository used to be the repository for the summarizer and associated code. The summerizer proper now lives in [https://github.com/clamsproject/mmif-python](https://github.com/clamsproject/mmif-python) and the remaining code is repurposed as an inspector. At the moment everything in this repository, including the documentation, is eminently unstable.
 
 Code to create a summary of an MMIF file, only keeping those annotations that are useful metadata (and reducing the size of the file by one or two orders of magnitude), and making some implicit relations between annotations and anchors in the source explicit.
 
@@ -8,31 +10,25 @@ This code requries Python 3.10 or higher and the clams-python module:
 $ pip install clams-python>=1.3.3
 ```
 
+The inspector runs on a summary of a MMIF file created by the `mmif summarize` CLI command and it generates a mini website from the summary. See [docs/output/index.md](docs/output/index.md) for a description of the output. One of the perks of the summarizer is that errors in the MMIF file are made more obvious, the output description has an example of that. 
+
 To run properly it requires MMIF files from version 1.0.0 or higher. There are no plans to make older MMIF files palatable to the summarizer.
-
-The summarizer can generate a JSON summary as well as a mini website from the summary. See [docs/output/index.md](docs/output/index.md) for a description of the output. One of the perks of the summarizer is that errors in the MMIF file are made more obvious, the output description has an example of that. 
-
 
 
 ## Usage
 
-The summarizer is implemented as a Python package. If you have installed the package you have access to the summarize command utility, but the package also comes with the `run_summarizer.py` script which calls the package.
-
-The summarizer creates a JSON summary, and optionally turns it into a mini webpage. After installing the module you can run the code as follows:
+The inspector is implemented as a Python package. If you have installed the package you have access to the inspect command utility, but the package also comes with the `run_inspector.py` script which calls the package.
 
 ```bash
-$ summarize --full -i MMIF_FILE -o JSON_FILE
+$ inspect -i MMIF_FILE -o JSON_FILE
 ```
 
 For development you can run the code from this repository using the run script:
 
 ```bash
 $ cd code
-$ python run_summarizer.py --full -i MMIF_FILE -o JSON_FILE
+$ python run_inspector.py -i MMIF_FILE -o JSON_FILE
 ```
-
-
-For all options, see `code/summarizer/summary.py` and [code/summarizer/README.md](code/summarizer/README.md). The latter is what is published on PyPI.
 
 
 ## Publishing
@@ -58,10 +54,3 @@ $ twine upload --repository testpypi dist/*
 ```
 
 You can see this package at [https://test.pypi.org/project/summarizer-mv/](https://test.pypi.org/project/summarizer-mv/).
-
-
-## Some history
-
-This repository was originally intended for creating a CLAMS summarizer app, but the current thinking is to add a summarize utility to the mmif-python utilities at [https://github.com/clamsproject/mmif-python/tree/develop/mmif/utils](https://github.com/clamsproject/mmif-python/tree/develop/mmif/utils).
-
-As a result, this repository will probably eventually be archived, but for now it will remain until the summarizer code has been ported (and other utilities in here have found a home if appropriate).

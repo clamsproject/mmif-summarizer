@@ -1,19 +1,19 @@
-# Publishing the summarizer
+# Publishing the Inspector
 
 Notes on how to publish the summarizer as a PyPI package. Adding more details compared to the module readme file.
 
 
 ## Starting point
 
-We start with a Python code package in `code/summarizer`:
+We start with a Python code package in `code/inspector`:
 
 ```
-code/summarizer/
+code/inspector/
 ├── __init__.py
 ├── config.py
-├── graph.py
-├── README.md
-├── summary.py
+├── inspect.py
+├── main.css
+├── main.js
 └── utils.py
 ```
 
@@ -109,18 +109,18 @@ Now you can build
 Successfully built summarizer_mv-0.1.0.tar.gz and summarizer_mv-0.1.0-py3-none-any.whl
 ```
 
-To use this code locally from scratch you take four steps: (1) create a directory, I created `use-summarizer` at the top level of this repository), (2) cd into the new directory, create a clean virtual environment and activate it, (3) install the distribution and (4) try it.
+To use this code locally from scratch you take four steps: (1) create a directory, (2) cd into the new directory, (2) create a clean virtual environment and activate it, (3) install the distribution and (4) try it.
 
 ```bash
 $ mkdir run-summarizer
 $ cd run-summarizer
 $ python3 -m venv .venv
 $ source .venv/bin/activate
-$ pip install ../code/dist/summarizer_mv-0.1.0-py3-none-any.whl
-$ summarize
+$ pip install ../dist/inspector_mv-0.0.1-py3-none-any.whl
+$ inspect -h
 ```
 
-The last step, since it does not give any of the needed command line arguments, should print a help message.
+The last step should print a help message.
 
 
 ## Publishing
@@ -131,16 +131,17 @@ Use the twine module to upload to TestPyPI:
 $ twine upload --repository testpypi dist/*
 ```
 
-If this succeeds there should be a new upload at [https://test.pypi.org/project/summarizer-mv/](https://test.pypi.org/project/summarizer-mv/). Plenty can go wrong of course, including forgetting to increase the version number. But if it didn't you can cut and paste the pip-install command and use it in another clean directory.
+If this succeeds there should be a new upload at [https://test.pypi.org/project/inspector-mv/](https://test.pypi.org/project/inspector-mv/). Plenty can go wrong of course, including forgetting to increase the version number. But if it didn't you can cut and paste the pip-install command and use it in another clean directory.
 
 ```bash
-$ mkdir use-summarizer2
-$ cd use-summarizer2/
-$ python
+$ mkdir test
+$ cd test
 $ python3 -m venv .venv
 $ source .venv/bin/activate
-$ pip install -i https://test.pypi.org/simple/ summarizer-mv
+$ pip install -i https://test.pypi.org/simple/ inspector-mv
 ```
+
+> NOTE: some of the prose below may be only for the time when we had a full summarizer and not an inspector. Fast forward to the end of the publishing section to see what you really needs to do. Also, the inspector package does not depend on clams-python.
 
 The latter gave a ludicrous error:
 
@@ -175,7 +176,7 @@ Which also failed
 ```
 Looking in indexes: https://test.pypi.org/simple/
 Collecting summarizer-mv==0.2.0
-  Using cached https://test-files.pythonhosted.org/packages/04/fc/41a4b90ed0bf42d70f938813aef1c3815726383db9df1b2208d0670c613d/summarizer_mv-0.2.0-py3-none-any.whl (22 kB)
+  Using cached https://test-files.pythonhosted.org/packages/04/fc/41a4b90ed0bf42d70f938813aef1c3815726383db9df1b2208d0670c613d/inspector_mv-0.2.0-py3-none-any.whl (22 kB)
 ERROR: Could not find a version that satisfies the requirement clams-python>=1.3.3 (from summarizer-mv) (from versions: 0.0.1a1.macosx-10.7-x86_64, 0.0.1, 0.0.2, 0.3.0)
 ERROR: No matching distribution found for clams-python>=1.3.3
 ```
@@ -183,13 +184,13 @@ ERROR: No matching distribution found for clams-python>=1.3.3
 The reason for this is that pip tries to download everything from [https://test.pypi.org/simple/](https://test.pypi.org/simple/), but that repository does not have clams-python==1.3.3. So instead you need to do:
 
 ```bash
-$ python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ summarizer-mv
+$ python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ inspector-mv
 ```
 
 And now you can do
 
 ```bash
-$ summarize
+$ inspect -h
 ```
 
 And again this should give you a help message.
@@ -240,6 +241,8 @@ But that way is now deprecated.
 
 ### Adding images to the description
 
+> Note, the links below are for the old summarizer
+ 
 I tried this by adding an image at the same level as the description file and link to it from the description file. The problem is that this cannot be relative link. So instead save the image somewhere else in the repo (not in the package code so it does not clog up the package) and then link to it with an absolute path. To get the image's raw link on GitHub, right-click the image and choose "Copy image address". See [https://glasnt.com/blog/new-images/](https://glasnt.com/blog/new-images/) and [how-do-i-add-images-to-a-pypi-readme-that-works-on-github](https://stackoverflow.com/questions/41983209/how-do-i-add-images-to-a-pypi-readme-that-works-on-github) on stackoverflow.
 
 The right-clicking does not work really, but here is the general recipe for the image name:
@@ -255,6 +258,8 @@ For example de URL [https://raw.githubusercontent.com/clamsproject/mmif-summariz
 
 
 ### Quicker testing with uv
+
+> Note, much of the proce below is for the old summarizer
 
 Since uv loads modules so much faster it could be worth doing this. In short:
 

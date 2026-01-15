@@ -1,9 +1,44 @@
 """
 
-python create_html.py -i INPUT_SUMMARY_FILE -o OUTPUT_HTML_DIRECTORY
+The inspector generates a mini website in HTML_DIR with pages for views, timeframes,
+transcript and captions.
 
-Generate a mini website in HTML_DIR with pages for views, timeframes, transcript
-and captions.
+This should work for both creating a static site like this which does not need a
+Flask server, and for the MMIF Storage sever which runs on Flask.
+
+I do not want any Flask-dependent code or templates in here so it seems that the
+only sane whay to do this is to
+
+- Factor out all code below that is not display related. For example, write_origin
+  has five lines, the first four get the command from sys.argv and massage it, and 
+  the last line prints HTML. This could be two methods: one for the first four lines
+  (but maybe not using argv but taking a string) and one for the printing. Note that
+  this is not the best example because write_origin may not be used on the Storage
+  site.
+
+- What's left would hopefully be some skeleton code for each static page, which
+  takes the same arguments as the Flask/Jinja templates would.
+
+- There will still be a lot of redundancy because the templates and the code here
+  will basically do the same. Some maybe I will have to drop the requirement that
+  this repository is independent from Flask in all ways. But even with the Flask
+  dependency there is still a problem with that the templates are different from
+  the way HTML is created here. I wonder if I can use Jinja in isolation for that.
+
+  This seems totally possible, see
+
+  https://stackoverflow.com/questions/30382187/render-jinja2-template-without-a-flask-context
+
+- Figure out what to do with the links and the stylesheet and javascript files.
+
+The Storage Server code would then just render the Jinja templates using the code
+here.
+
+What I am unclear about is how this works with the links between the pages since
+the Flask site makes liberal use of get variables. Somehow those would need to be
+used to determine what template to load. It would probably be a good idea to come
+up with a small toy website to play with this.
+
 
 """
 

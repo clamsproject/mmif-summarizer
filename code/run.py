@@ -21,10 +21,21 @@ Cut all annotations from a MMIF file except for those within a time range:
 
 $ python run.py --summarize DIRECTORY
 
-This will ask the user to enter a directory with CLAMS processing results. Walks
-trough all MMIF files in the directory and summarizes them and creates mini-websites
-for them. This actually only creates the scaffolding for that website but also writes
-to standard output the commands that can be used for the actual summarization.
+DIRECTORY is a directory with CLAMS processing results. This will ask the user to enter
+an output directory. It walks trough all MMIF files in the input directory and summarizes
+them and creates mini-websites for them. This actually only creates the scaffolding for
+that website but also writes to standard output the commands that can be used for the
+actual summarization.
+
+This is now obsolete here and should be moved to mmif-python if we want to keep it.
+
+
+$ python run.py --inspect DIRECTORY
+
+DIRECTORY is a directory with MMIF SUmmaries. This will ask the user to enter an output
+directory. It walks trough all summaries in the input directory  and creates mini-websites
+for them.
+
 
 """
 
@@ -38,6 +49,9 @@ from pathlib import Path
 from subprocess import Popen, PIPE
 
 from mmif.serialize import Mmif
+
+from inspector import create_html
+
 
 
 def load_mmif(fname: str):
@@ -58,11 +72,7 @@ def cut_mmif(fname: str, start: int, end: int):
 
 
 def summarize(directory: str):
-    outdir = input('Enter the name of an output directory: ')
-    outdir = Path(outdir)
-    if outdir.exists():
-        exit(f'WARNING: "{outdir}" already exists, exiting...')
-    outdir.mkdir(exist_ok=True)
+    outdir = prompt_for_output_directory()
     Path(outdir, 'summaries').mkdir(exist_ok=True)
     Path(outdir, 'pages').mkdir(exist_ok=True)
     create_index_file(Path(outdir, 'pages'))
@@ -96,6 +106,46 @@ def summarize_file(mmif_file: Path, outdir: Path, links: dict):
     #add_link_to_index_file(Path(outdir, 'pages'), mmif_file, mmif_file_hash)
 
 
+def inspect(directory: str):
+    print(9999)
+    outdir = prompt_for_output_directory()
+    index_file = create_index_file(Path(outdir))
+    links = {}
+    for root, dirs, files in os.walk(directory, topdown=False):
+        for name in sorted(files):
+            #print('>>>', name)
+            # Just taking the basic MMIF files, no funny business
+            if name.endswith('.json') and name.count('.') == 1:
+                summary_file = Path(os.path.join(root, name))
+                # Create a summary and save it, and add information on the summary
+                # to the links dictionary
+                inspect_file(summary_file, outdir, links)
+    #index_file = Path(outdir, 'index.html')
+    with index_file.open("a") as fh:
+        for fname in sorted(links):
+            # this is a bit like add_link_to_index_file(), refactor?
+            summary_file_hash = links[fname]
+            link = f'<a href={summary_file_hash}/index.html>{fname}</a>'
+            fh.write(f'<tr><td>{summary_file_hash}<td>{link}</tr>\n')
+
+
+def inspect_file(summary_file: Path, outdir: Path, links: dict):
+    summary_file_hash = abs(hash(summary_file))
+    html_dir = Path(outdir, str(summary_file_hash))
+    create_html(summary_file, html_dir)
+    links[summary_file] = summary_file_hash
+
+
+
+def prompt_for_output_directory():
+    outdir = input('Enter the name of an output directory: ')
+    outdir = Path(outdir)
+    if outdir.exists():
+        exit(f'WARNING: "{outdir}" already exists, exiting...')
+    outdir.mkdir(exist_ok=True)
+    return outdir
+
+
 def create_command(infile, outfile, outdir):
     return f'python run_summarizer.py --full -i {infile} -o {outfile} --html {outdir}'
 
@@ -127,7 +177,7 @@ def command_as_pretty_string(command):
     return command
 
 
-def create_index_file(pages_dir: Path):
+def create_index_file(pages_dir: Path) -> Path:
     index_file = Path(pages_dir, 'index.html')
     style1 = 'table { border: 1px solid black; border-collapse: collapse; }'
     style2 ='td { border: 1px solid black; padding: 8px; spacing: 0px; }'
@@ -135,6 +185,7 @@ def create_index_file(pages_dir: Path):
         '<html>\n' 
         + f'<head>\n<style>\n{style1}\n{style2}\n</style>\n</head>\n'
         + f'<body>\n\n<h3>HTML Summaries</h3>\n\n<table>\n')
+    return index_file
 
 
 def create_log_file(log_file):
@@ -161,11 +212,13 @@ def add_link_to_index_file(outdir: str, fname: str, links: dict):
 
 def argparser():
     help_sum = 'summarize all available MMIF files in DIR'
+    help_inspect = 'create mini-websites for all summaries in DIR'
     help_cut = 'load MMIF file and keep only annotations within a timeframe'
     help_start = 'with --cut option, start of timeframe'
     help_end = 'with --cut option, end of timeframe'
     parser = argparse.ArgumentParser()
     parser.add_argument('--summarize', metavar='DIR', help=help_sum)
+    parser.add_argument('--inspect', metavar='DIR', help=help_inspect)
     parser.add_argument('--load', metavar='MMIF_FILE', help='load MMIF file')
     parser.add_argument('--cut', metavar='MMIF_FILE', help=help_cut)
     parser.add_argument('--start', metavar='INT', help=help_start)
@@ -186,3 +239,6 @@ if __name__ == '__main__':
 
     if args.summarize:
         summarize(args.summarize)
+
+    if args.inspect:
+        inspect(args.inspect)
