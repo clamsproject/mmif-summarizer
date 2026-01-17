@@ -1,0 +1,39 @@
+
+<html>
+
+<head>
+<link rel="stylesheet" href="main.css">
+<script src="main.js"></script>
+</head>
+
+<body>
+
+<h2>{{ title }}</h2>
+
+<h3>Timeframes</h3>
+
+{% for app in timeframes %}
+<div class=section>
+<strong>{{ app }}</strong>
+<blockquote>
+<table>
+<tr>
+  <td>start</td>
+  <td>end</td>
+  <td>reps</td>
+  <td>label</td>
+  <td>score</td>
+</tr>
+{% for timeframe in timeframes[app] %}
+<tr>
+  <td>{{ timeframe.start }}</td>
+  <td>{{ timeframe.end }}</td>
+  <td>{{ timeframe.representatives }}</td>
+  <td>{{ timeframe.label }}</td>
+  <td>{{ timeframe.score }}</td>
+</tr>
+{% endfor %}
+</table>
+</blockquote>
+</div>
+{% endfor %}

@@ -1,0 +1,52 @@
+
+<html>
+
+<head>
+<link rel="stylesheet" href="main.css">
+<script src="main.js"></script>
+</head>
+
+<body>
+
+<h2>{{ title }}</h2>
+
+<h3>Entities</h3>
+
+<div class=section>
+<p>Only printing the following entity types: {{ ', '.join(categories) }}.</p>
+
+<table>
+<tr>
+  <td></td>
+  <td>category</td>
+  <td>time</td>
+  <td>doc</td>
+  <td>start</td>
+  <td>end</td>
+</tr>
+{% for entity in entities %}
+<tr>
+  <td valign=top>{{ entity.text }}</td>
+  <td>{{ entity.instances[0].cat }}</td>
+  <td></td>
+  <td>{{ entity.instances[0].document }}</td>
+  <td align=right>{{ entity.instances[0].start }}</td>
+  <td align=right>{{ entity.instances[0].end }}</td>
+</tr>
+{% for instance in entity.instances[1:] %}
+<tr>
+  <td></td>
+  <td>{{ instance.cat }}</td>
+  <td></td>
+  <td>{{ instance.document }}</td>
+  <td align=right>{{ instance.start }}</td>
+  <td align=right>{{ instance.end }}</td>
+</tr>
+{% endfor %}
+{% endfor %}
+
+</table>
+</div>
+
+</body>
+</html>

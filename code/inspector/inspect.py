@@ -1,44 +1,39 @@
 """
 
-The inspector generates a mini website in HTML_DIR with pages for views, timeframes,
-transcript and captions.
+The inspector generates a mini website in HTML_DIR with pages for views,
+timeframes, transcript and captions.
 
-This should work for both creating a static site like this which does not need a
-Flask server, and for the MMIF Storage sever which runs on Flask.
+It uses Jinja2 templates to create individual pages.
 
-I do not want any Flask-dependent code or templates in here so it seems that the
-only sane whay to do this is to
+At the moment it only runs standalone, that is, you run it to create a static
+website
 
-- Factor out all code below that is not display related. For example, write_origin
-  has five lines, the first four get the command from sys.argv and massage it, and 
-  the last line prints HTML. This could be two methods: one for the first four lines
-  (but maybe not using argv but taking a string) and one for the printing. Note that
-  this is not the best example because write_origin may not be used on the Storage
-  site.
+Soon I will be tweaked to work in the contenxt of the MMIF Storage Server as
+well. It remains to be figured out what updates here are going to be needed for
+that and what kinds of changes need to be made, especially to the links and the
+stylesheet and javascript files. For example for the links between the pages the
+Flask site makes liberal use of get variables. Somehow those would need to be
+used to determine what template to load.
 
-- What's left would hopefully be some skeleton code for each static page, which
-  takes the same arguments as the Flask/Jinja templates would.
+More temporary developer notes:
 
-- There will still be a lot of redundancy because the templates and the code here
-  will basically do the same. Some maybe I will have to drop the requirement that
-  this repository is independent from Flask in all ways. But even with the Flask
-  dependency there is still a problem with that the templates are different from
-  the way HTML is created here. I wonder if I can use Jinja in isolation for that.
+Jinja string formatting:
 
-  This seems totally possible, see
+https://stackoverflow.com/questions/45698629/jinja2-padding-and-aligning-strings
+https://support.sendwithus.com/jinja/formatting_numbers/
+https://dnmtechs.com/formatting-numbers-in-jinja2-in-python-3/
 
-  https://stackoverflow.com/questions/30382187/render-jinja2-template-without-a-flask-context
+Commands:
 
-- Figure out what to do with the links and the stylesheet and javascript files.
+Use the first three for index, views and timeframes
+Use the first for captions
+Use the third for correlations
+Use the fourth for named entities
 
-The Storage Server code would then just render the Jinja templates using the code
-here.
-
-What I am unclear about is how this works with the links between the pages since
-the Flask site makes liberal use of get variables. Somehow those would need to be
-used to determine what template to load. It would probably be a good idea to come
-up with a small toy website to play with this.
-
+$ rm -rf x ; python run_inspector.py -i out/summaries/summaries/cpb-aacip-225-12z34w2c.json -o x
+$ rm -rf x ; python run_inspector.py -i out/summaries/summaries/cpb-aacip-507-028pc2tq55.json -o x
+$ rm -rf x ; python run_inspector.py -i out/summaries/summaries/cpb-aacip-526-z60bv7c69m.json -o x
+$ rm -rf x ; python run_inspector.py -i examples/pipelines/spacy-v1.1/cpb-aacip-507-9882j68s35-transcript.json -o x
 
 """
 
@@ -50,7 +45,9 @@ import json
 import math
 from pathlib import Path
 
-from inspector import utils
+from jinja2 import Template
+
+from inspector.utils import timestamp, pretty_json
 
 from inspector.config import INDEX_PAGE, CSS_PAGE, JS_PAGE, VIEWS_PAGE
 from inspector.config import TIMEFRAMES_PAGE, CORRELATIONS_PAGE, TRANSCRIPT_PAGE
@@ -58,140 +55,205 @@ from inspector.config import CAPTIONS_PAGE, ENTITIES_PAGE
 from inspector.config import a_right, a_topleft, a_top, hide
 
 
+entity_categories = ['PERSON', 'ORG', 'DATE', 'GPE', 'NORP', 'LANGUAGE']
+
+
+class TimeFrame:
+
+    """The time frame that is handed into the jinja template."""
+
+    def __init__(self, timeframe_summary: dict):
+        self._identifier = timeframe_summary['identifier']
+        self._label = timeframe_summary['label']
+        self._start = timeframe_summary['start-time']
+        self._end = timeframe_summary['end-time']
+        self._representatives = timeframe_summary['representatives']
+        self._score = timeframe_summary['score']
+
+    def __str__(self):
+        return f'<TimeFrame {self._identifier} {self._label} {self._start}>'
+
+    @property
+    def label(self):
+        return self._label
+
+    @property
+    def start(self):
+        return timestamp(self._start)
+
+    @property
+    def end(self):
+        return timestamp(self._end)
+
+    @property
+    def score(self):
+        return '' if self._score is None else f'{self._score:06.4f}'
+
+    @property
+    def representatives(self):
+        return ' '.join([timestamp(rep) for rep in self._representatives])
+
+
+class Caption:
+
+    """The caption that is handed into the jinja template."""
+
+    def __init__(self, caption_summary: dict):
+        self._identifier = caption_summary['identifier']
+        self._timepoint = caption_summary['time-point']
+        self._text = caption_summary['text']
+
+    def __str__(self):
+        return f'<Caption {self.identifier} {self.timepoint} {self.text[:50]}>'
+
+    @property
+    def identifier(self):
+        return self._identifier
+
+    @property
+    def timepoint(self):
+        return timestamp(self._timepoint)
+
+    @property
+    def text(self):
+        return self._text.strip().replace('\n', '<br/>')
+
+
+class TranscriptLine:
+
+    """The transcript line that is handed into the jinja template."""
+
+    def __init__(self, line_summary: dict):
+        self._start = line_summary['start-time']
+        self._end = line_summary['end-time']
+        self._text = line_summary['text']
+
+    def __str__(self):
+        return f'<TranscriptLine {self.start} {self.end} "{self.text[:50]}">'
+
+    @property
+    def start(self):
+        return timestamp(self._start)
+
+    @property
+    def end(self):
+        return timestamp(self._end)
+
+    @property
+    def text(self):
+        return self._text.strip().replace('\n', '<br/>')
+
+
+class Entity:
+
+    def __init__(self, entity_summary: dict):
+        self.text = entity_summary['text']
+        self.instances = []
+        for inst in entity_summary['instances']:
+            instance = EntityInstance(inst)
+            if instance.cat in entity_categories:
+                self.instances.append(instance)
+
+    def __str__(self):
+        return f'<Entity text="{self.text} instances={len(self.instances)}>'
+
+    def has_instances(self):
+        return len(self.instances) > 0
+
+
+class EntityInstance:
+
+    def __init__(self, instance_summary: dict):
+        self.identifier = instance_summary['id']
+        self.document = instance_summary['document']
+        self.timepoint = instance_summary.get('time-point', -1)
+        self.start = instance_summary['text-offsets'][0]
+        self.end = instance_summary['text-offsets'][1]
+        self.group = instance_summary['group']
+        self.cat = instance_summary['cat']
+
+    @property
+    def location(self) -> tuple:
+        # This was how the old code was getting the locations, but it wasn't
+        # used really (because then and now as well we have only looked at
+        # entities from transcripts). This needs to be updated once we have
+        # entities with timepoints.
+        time_point = ''
+        start = ''
+        end = ''
+        if self.timepoint != -1:
+            time_point = timestamp(self.timepoint)
+        if 'text-offsets' in self:
+            start = str(self.start)
+            end = str(self.end)
+        return (time_point, start, end)
+
 
 def create_html(infile: str, outdir: str):
 
-    def write_origin(page):
-        command = " ".join(sys.argv)
-        command = command.replace(' -i', ' \\\n    -i')
-        command = command.replace(' -o', ' \\\n    -o')
-        command = command.replace(' --html', ' \\\n    --html')
-        page.write(f'<pre class=origin>{command}</pre>\n\n')
+    inpath = Path(infile)
+    outpath = create_directory(outdir)
 
-    def write_document(page, summary):
-        page.write_section('General Info')
-        page.write('<table>\n')
-        mv = summary["mmif_version"]
-        doc = summary['document']
-        page.write_tr(
-            ('MMIF Version', f'<a href="{mv}">{mv}</a>\n'),
-            ('Size of MMIF file', f"{doc['size']:,d}"),
-            ('Size of summary', f'{os.path.getsize(infile):,d}'))
-        if 'duration_ts' in doc:
-            page.write_tr(('Video duration', doc['duration_ts']))
-        if 'fps' in doc:
-            page.write_tr(('Frames per second', doc['fps']))
-        page.write('</table>\n')
-        page.write_section_end()
-    
-    def write_documents_and_views(page, summary):
-        page.write_section('Documents and views')
-        page.write('<table>\n')
-        for doc in summary['documents']:
-            page.write_tr((doc['id'], doc['type'], doc['location']))
-        page.write('</table>\n')
-        page.write('<p>\n')
-        page.write('<table>\n')
-        for view in summary['views']:
-            page.write_tr(
-                (view['id'],
-                f"<a href=views.html#{view['id']}>{view['app']}</a>",
-                (f"{view['annotation_count']:,d}", a_right)))
-        page.write('</table>\n')
-        page.write_section_end()
+    summary = json.loads(inpath.open().read())
+    docinfo = document_info(infile, summary)
+    tf_stats = timeframe_statistics(summary)
+    summaries = available_summaries(summary)
+    warnings = all_warnings(summary)
+    timeframes = all_timeframes(summary)
+    captions = [Caption(c) for c in summary['captions']]
+    transcript = [TranscriptLine(line) for line in summary['transcript']]
+    entities = [Entity(e) for e in summary['entities']]
+    entities = [e for e in entities if e.has_instances()]
 
-    def write_document_annotations(page, summary):
-        page.write_section('Document-level annotations')
-        for v_id in summary['annotations']:
-            for anno in summary['annotations'][v_id]:
-                page.write('<table>\n')
-                for k, v in anno.items():
-                    page.write_tr((k, v))
-                page.write('</table>\n')
-        page.write_section_end()
+    template = Template(Path('inspector/templates/index.html').read_text())
+    rendered_template = template.render(
+        title=inpath.stem, summary=summary, origin=None, docinfo=docinfo,
+        tfstats=tf_stats, summaries=summaries)
+    (outpath / INDEX_PAGE).write_text(rendered_template)
 
-    def write_content(page, summary):
-        # TODO: use math.isnan() to avoid printing "nan" in the page
-        video_length = summary['document'].get('duration_ms', float('nan'))
-        if 'timeframe_stats' in summary and summary['timeframe_stats']:
-            page.write_section('Content')
-            # TODO: this should be wrapped in a div or a table with one row
-            for app in summary['timeframe_stats']:
-                page.write(f'<p><a href="{app}">{app}</a></p>\n')
-                stats = summary['timeframe_stats'][app]
-                page.write('<table>\n')
-                page.write('<tr>\n')
-                page.write_td('')
-                page.write_td('cumulative', attrs='colspan=2')
-                page.write_td('count')
-                page.write_td('average')
-                page.write_td('first&nbsp;at')
-                page.write_td('longest&nbsp;at')
-                page.write('</tr>\n')
-                for label, tf_stats in sorted_pairs(stats):
-                    duration_ms = tf_stats['duration']
-                    duration_ts = utils.timestamp(duration_ms)
-                    count = tf_stats['count']
-                    average = tf_stats['average']
-                    ts_first = tf_stats['first']
-                    ts_longest = tf_stats['longest']
-                    coverage = duration_ms * 100 / video_length
-                    page.write_tr(
-                        (label, 
-                         (duration_ts, a_right),
-                         (f'{coverage:.2f}%', a_right), 
-                         (count, a_right), 
-                         (utils.timestamp(average), a_right), 
-                         (utils.timestamp(ts_first), a_right), 
-                         (utils.timestamp(ts_longest), a_right)))
-                page.write('</table>\n')
-            page.write_section_end()
+    template = Template(Path('inspector/templates/views.html').read_text())
+    rendered_template = template.render(
+        title=inpath.stem, summary=summary, warnings=warnings, display=pretty_json)
+    (outpath / VIEWS_PAGE).write_text(rendered_template)
 
-    outpath = Path(outdir)
-    outpath.mkdir(exist_ok=True)
-    for f in outpath.glob("*"):
+    template = Template(Path('inspector/templates/timeframes.html').read_text())
+    rendered_template = template.render(
+        title=inpath.stem, timeframes=timeframes)
+    (outpath / TIMEFRAMES_PAGE).write_text(rendered_template)
+
+    template = Template(Path('inspector/templates/captions.html').read_text())
+    rendered_template = template.render(
+        title=inpath.stem, captions=captions)
+    (outpath / CAPTIONS_PAGE).write_text(rendered_template)
+
+    template = Template(Path(f'inspector/templates/{TRANSCRIPT_PAGE}').read_text())
+    rendered_template = template.render(
+        title=inpath.stem, transcript=transcript)
+    (outpath / TRANSCRIPT_PAGE).write_text(rendered_template)
+
+    template = Template(Path(f'inspector/templates/{ENTITIES_PAGE}').read_text())
+    rendered_template = template.render(
+        title=inpath.stem, categories=entity_categories, entities=entities)
+    (outpath / ENTITIES_PAGE).write_text(rendered_template)
+
+
+def create_directory(directory: str) -> Path:
+    """Create a new directory with the resources in place. If it already exists then
+    html files in that directory will be deleted."""
+    path = Path(directory)
+    path.mkdir(exist_ok=True)
+    for f in path.glob("*"):
         if f.is_file() and f.name.endswith('.html'):
             f.unlink()
-
-    create_resources(outpath)
-    summary = json.loads(Path(infile).open().read())
-    page = Html(infile, outpath / INDEX_PAGE)
-    write_origin(page)
-    write_document(page, summary)
-    write_documents_and_views(page, summary)
-    #write_document_annotations(page, summary)
-    write_content(page, summary)
-    page.write_section('Summaries')
-    page.write('[ ')
-    page.write(f'<a href="{VIEWS_PAGE}">Views</a>\n')
-    create_html_views(infile, outpath, summary)
-    if 'timeframes' in summary:
-        add_index_link(page, summary, 'timeframes', TIMEFRAMES_PAGE)
-        add_index_link(page, summary, 'timeframes', CORRELATIONS_PAGE, name='correlations')
-        create_html_timeframes(infile, outpath, summary)
-        create_html_correlations(infile, outpath, summary)
-    if 'transcript' in summary:
-        add_index_link(page, summary, 'transcript', TRANSCRIPT_PAGE)
-        create_html_transcript(infile, outpath, summary)
-    if 'captions' in summary:
-        add_index_link(page, summary, 'captions', CAPTIONS_PAGE)
-        create_html_captions(infile, outpath, summary)
-    if 'entities' in summary:
-        add_index_link(page, summary, 'entities', ENTITIES_PAGE)
-        create_html_entities(infile, outpath, summary)
-    page.write(']\n')
-    page.write_section_end()
-    page.write_to_file()
+    create_resources(path)
+    return path
 
 
-def add_index_link(page, summary, summary_part, part_page, name=None):
-    name = summary_part if name is None else name
-    if summary[summary_part]:
-        page.write(f'| <a href="{part_page}">{name.capitalize()}</a>\n')
-
-
-def create_resources(outpath):
+def create_resources(outpath: Path):
     """Copy the stylesheet and javascript file into the website."""
+    # TODO: this would not deal with running this in a Flask site. For that we
+    # probably need some whay to copy the file from here or have the server ask
+    # this module to run the server. May want to use the static/{css,js} locations.
     css_source = Path(Path(__file__).parent, CSS_PAGE)
     css_target = Path(outpath, CSS_PAGE)
     css_target.write_text(css_source.read_text())
@@ -200,113 +262,117 @@ def create_resources(outpath):
     js_target.write_text(js_source.read_text())
 
 
-def create_html_views(infile: str, outpath: Path, summary: dict):
-    """Create the page with the view information."""
+def origin_command() -> str:
+    """Create pretty print version for command as it was entered on the CLI."""
+    command = " ".join(sys.argv)
+    command = command.replace(' -i', ' \\\n    -i')
+    command = command.replace(' -o', ' \\\n    -o')
+    command = command.replace(' --html', ' \\\n    --html')
+    return command
 
-    def write_view_list(page, summary):
-        page.write('<div class=section>\n')
-        page.write('<table class=noborder>\n')
-        for view in summary['views']:
-            page.write_tr(
-                (f'<a href="#{view["id"]}">{view["id"]} &mdash; {view["app"]}</a>',))
-        page.write('</table>\n')
-        page.write('</div>\n\n')
 
-    def write_contains(page, view):
-        page.write('<tr>\n')
-        page.write(f'  <td {a_top}>contains</td>\n')
-        page.write(f'  <td>\n')
-        for atype in view['contains']:
-            page.write(f'    <a href={atype}>{atype}</a><br/>\n')
-        page.write(f'  </td>\n')
-        page.write('</tr>\n')
+def document_info(infile: str, summary: dict) -> dict:
+    """Collect document-level information from the summary."""
+    mv = summary["mmif_version"]
+    doc = summary['document']
+    return {
+        'MMIF Version': f'<a href="{mv}">{mv}</a>',
+        'Size of MMIF file': f"{doc['size']:,d}    ",
+        'Size of summary': f'{os.path.getsize(infile):,d}',
+        'Video duration': doc.get('duration_ts', 'Not available'),
+        'Frames per second': doc.get('fps', 'Not available') }
 
-    def write_annotations(page, view, summary):
-        page.write('<tr>\n')
-        page.write(f'  <td {a_top}>annotation summary</td>\n')
-        page.write(f'  <td>\n')
-        page.write(f'  <table class=noborder>\n')
-        for attype in sorted(view['annotation_types']):
-            count = view['annotation_types'][attype]
-            page.write_tr((attype, '&nbsp;', (count, a_right)), indent=2)
-        page.write_tr(('TOTAL', '&nbsp;', (view["annotation_count"], a_right)), indent=2)
-        page.write(f'  </table>\n')
-        page.write(f'  </td>\n')
-        page.write('</tr>\n')
 
-    def write_warnings(page, view):
+def document_annotations(summary: dict) -> dict:
+    """Collect document annotations from the summary. Not used at the
+    moment because there is a lot of overlap with the document info."""
+    # TODO: if used this should be changed because now it produces on big flat
+    # list per view, mingling all annotations.
+    document_annotations = {}
+    for v_id in summary['annotations']:
+        document_annotations[v_id] = []
+        for anno in summary['annotations'][v_id]:
+            for k, v in anno.items():
+                document_annotations[v_id].append((k, v))
+    return document_annotations
+
+
+def timeframe_statistics(summary: dict) -> dict:
+    """Create a dictioray with statistics on timeframe labels like average length,
+    coverage (% of the vido that falls under the labels timeframe spans) and number
+    of frames."""
+    video_length = summary['document'].get('duration_ms', float('nan'))
+    all_stats = {}
+    for app in summary['timeframe_stats']:
+        all_stats[app] = {}
+        stats = summary['timeframe_stats'][app]
+        for label, tf_stats in sorted_pairs(stats):
+            duration_ms = tf_stats['duration']
+            duration_ts = timestamp(duration_ms)
+            label_stats = {
+                'duration': duration_ts,
+                'coverage': duration_ms * 100 / video_length,
+                'count': tf_stats['count'],
+                'average': timestamp(tf_stats['average']),
+                'first': timestamp(tf_stats['first']),
+                'longest': timestamp(tf_stats['longest']) }    
+            all_stats[app][label] = label_stats
+    return all_stats
+
+
+def available_summaries(summary: dict) -> list:
+    """Returns a list of specifications for what summaries are available, the
+    specifications include the name of the link and the name of the page with
+    that summary.""" 
+    links = [('Views', VIEWS_PAGE)]
+    if summary.get('timeframes'):
+        links.append(('TimeFrames', TIMEFRAMES_PAGE, None))
+        #links.append(('Correlations', CORRELATIONS_PAGE, 'correlations'))
+    if summary.get('transcript'):
+        links.append(('Transcript', TRANSCRIPT_PAGE, None))
+    if summary.get('captions'):
+        links.append(('Captions', CAPTIONS_PAGE, None))
+    if summary.get('entities'):
+        links.append(('Entities', ENTITIES_PAGE, None))
+    return links
+
+
+def all_warnings(summary:dict) -> dict:
+    """Return a dictionary with list of warnings for those views that have warnings."""
+    warnings = {}
+    for view in summary['views']:
         if 'warnings' in view:
-            page.write('<tr>\n')
-            page.write(f'  <td {a_top}>warnings</td>\n')
-            page.write('  <td>\n')
-            page.write('    <pre>\n')
+            warning_messages = []
             for w in view['warnings']:
                 try:
                     s = json.dumps(json.loads(w), indent=2)
                 except Exception:
                     s = w
-                page.write(f'{s}\n')
-            page.write('    </pre>\n')
-            page.write('  </td>\n')
-            page.write('\n')
-            page.write('\n')
-            page.write('\n')
-            page.write('</tr>\n')
-
-    page = Html(infile, outpath / VIEWS_PAGE, 'Views')
-    write_view_list(page, summary)
-    for view in summary['views']:
-        identifier = view['id']
-        app = view['app'] 
-        page.write_section(f'{identifier}', identifier=identifier)
-        page.write('<table>\n')
-        page.write_tr(
-            ('app', f"<a href={app}>{app}</a>"),
-            ('timestamp', view['timestamp']))
-        if 'warnings' not in view:
-            write_contains(page, view)
-            write_annotations(page, view, summary)
-        attrs = f'{a_top} id={view["id"]}-config style="display: none"'
-        button = f'<button onclick="toggle(\'conf-{view["id"]}\')">Show/Hide</button>'
-        page.write_tr((('parameters', a_top), pretty_json(view['parameters'])))
-        page.write('<tr>\n')
-        page.write_td('appConfiguration', a_top)
-        page.write('  <td>\n')
-        page.write(f'    {button}\n')
-        page.write(f'    <pre id=conf-{view["id"]} style="display: none">')
-        page.write(pretty_json(view['appConfiguration']))
-        page.write('</pre>\n')
-        page.write('  </td>\n')
-        page.write('</tr>\n')
-        if 'warnings' in view:
-            write_warnings(page, view)
-        page.write('</table>\n')
-        page.write_section_end()
-    page.write_to_file()
+            warning_messages.append(s)
+            warnings[view['id']] = warning_messages
+    return warnings
 
 
-def create_html_timeframes(infile: str, outpath: Path, summary: dict):
-    page = Html(infile, outpath / TIMEFRAMES_PAGE, 'Timeframes')
+def all_timeframes(summary: dict) -> dict:
+    timeframes = {}
     for app in summary['timeframes']:
-        page.write_section(app)
-        page.write('<table>\n')
-        page.write_tr(('start', 'end', 'reps', 'label', 'score'))
+        timeframes[app] = []
         for tf in summary['timeframes'][app]:
-            t1 = utils.timestamp(tf['start-time'])
-            t2 = utils.timestamp(tf['end-time'])
-            reps = [utils.timestamp(rep) for rep in tf['representatives']]
-            score = '' if tf['score'] is None else f'{tf["score"]:06.4f}'
-            page.write_tr(
-                (t1, t2, ' '.join(reps), tf['label'], score))
-        page.write('</table>\n')
-        page.write_section_end()
-    page.write_to_file()
+            timeframes[app].append(TimeFrame(tf))
+    return timeframes
 
+
+# The following is some legacy code from when we did not use jinja templates. It
+# is kept here for now because we may want to reintroduce the correlations (they
+# were removed because they weren't doing a lot on the data we were working with
+# and besides it was somewhat unclear what we wanted it do do exactly).
 
 def create_html_correlations(infile: str, outpath: Path, summary: dict):
     page = Html(infile, outpath / CORRELATIONS_PAGE, 'Correlations')
     for app1 in summary['timeframes']:
+        print(app1)
         for app2 in summary['timeframes']:
+            print(app2)
             if app1 == app2:
                 continue
             app1_name = '/'.join(Path(app1).parts[-2:])
@@ -347,144 +413,3 @@ def jaccard(s1, s2):
     union = s1.union(s2)
     #print (len(intersection), len(union))
     return (len(intersection) / len(union))
-
-
-def create_html_transcript(infile: str, outpath: Path, summary: dict):
-    page = Html(infile, outpath / TRANSCRIPT_PAGE, 'Transcript')
-    page.write('<table class=transcript>\n')
-    for sentence in summary['transcript']:
-        t1 = utils.timestamp(sentence['start-time'])
-        t2 = utils.timestamp(sentence['end-time'])
-        page.write_tr(((t1, a_topleft), (t2, a_topleft), sentence['text']))
-    page.write('</table>\n')
-    page.write_to_file()
-
-
-def create_html_captions(infile: str, outpath: Path, summary: dict):
-    page = Html(infile, outpath / CAPTIONS_PAGE, 'Captions')
-    page.write('<div class=section>\n')
-    page.write('<table class=transcript>\n')
-    for caption in summary['captions']:
-        text = caption['text'].replace('\n', '<br/>')
-        tp = utils.timestamp(caption['time-point'])
-        page.write_tr(((tp, a_topleft), (caption['identifier'], a_top), text))
-    page.write('</table>\n')
-    page.write('</div>\n')
-    page.write_to_file()
-
-
-def create_html_entities(infile: str, outpath:Path, summary: dict):
-    # TODO: print these for each TextDocument?
-    # TODO: or maybe have that as a user option?
-    # The set below could be a default for what categories are displayed, maybe
-    # later as an option in the interface where the user could check all desired
-    # categories.
-    included_categories = {'PERSON', 'ORG', 'DATE', 'GPE', 'NORP', 'LANGUAGE'}
-    def get_location(instance) -> tuple:
-        time_point = ''
-        start = ''
-        end = ''
-        if 'time-point' in instance and instance['time-point'] != -1:
-            time_point = utils.timestamp(instance['time-point'])
-        if 'text-offsets' in instance:
-            start = str(instance["text-offsets"][0])
-            end = str(instance["text-offsets"][1])
-        return (time_point, start, end)
-    page = Html(infile, outpath / ENTITIES_PAGE, 'Entities')
-    page.write('<div class=section>\n')
-    page.write(f'<p>Only printing the following entity types:')
-    page.write(f' {", ".join(included_categories)}.</p>\n\n')
-    page.write('<table>\n')
-    page.write_tr(['', 'category', 'time', 'doc', 'start', 'end'])
-    for entity in summary['entities']:
-        #print(entity['text'], len(entity['instances']))
-        text = entity['text'].replace('\n', ' ').replace(' ', '&nbsp;')
-        instances = entity['instances']
-        instances = [inst for inst in instances if inst['cat'] in included_categories]
-        if instances:
-            tp, p1, p2 = get_location(instances[0])        
-            page.write_tr([
-                (text, a_top), instances[0]['cat'], tp,
-                instances[0]['document'], (p1, a_right), (p2, a_right)])
-            for inst in instances[1:]:
-                tp, p1, p2 = get_location(inst)
-                page.write_tr([
-                    '', inst['cat'], tp,
-                    inst['document'], (p1, a_right), (p2, a_right)])
-    page.write('</table>\n')
-    page.write('</div>\n')
-    page.write_to_file()
-
-
-class Html:
-
-    stylesheet_link = f'<link rel="stylesheet" href="{CSS_PAGE}">'
-    javascript_link = f'<script src="{JS_PAGE}"></script>'
-
-    def __init__(self, infile: str, outpath: Path, header: str = None):
-        self.path = outpath
-        self.stream = io.StringIO()
-        self.stream.write(f'<html>\n\n')
-        self.stream.write(f'<head>\n')
-        self.stream.write(f'{self.__class__.stylesheet_link}\n')
-        self.stream.write(f'{self.__class__.javascript_link}\n')
-        self.stream.write(f'</head>\n\n')
-        self.stream.write(f'<body>\n\n')
-        self.stream.write(f'<h2>{Path(infile).stem}</h2>\n\n')
-        if header is not None:
-            self.stream.write(f'<h3>{header}</h3>\n\n')
-        self.views = []
-        self.captions = []
-
-    def write(self, text: str):
-        self.stream.write(text)
-
-    def write_section(self, title: str = None, identifier: str = None):
-        id_attr = '' if identifier is None else f' id={identifier}' 
-        self.stream.write(f'<div class=section{id_attr}>\n')
-        if title is not None:
-            self.stream.write(f'<strong>{title}</strong>\n')
-        self.stream.write(f'<blockquote>\n')
-
-    def write_section_end(self):
-        self.stream.write('</blockquote>\n')
-        self.stream.write('</div>\n\n')
-
-    def write_tr(self, *table_cells, indent=0, attrs=''):
-        if attrs:
-            attrs = ' ' + ' '.join([f'{k}={v}' for k, v in attrs.items()])
-        for cells in table_cells:
-            self.stream.write(f'{" " * indent}<tr{attrs}>\n')
-            for cell in cells:
-                if isinstance(cell, tuple):
-                    self.stream.write(f'{" " * indent}  <td {cell[1]}>{cell[0]}</td>\n')
-                else:
-                    self.stream.write(f'{" " * indent}  <td>{cell}</td>\n')
-            self.stream.write(f'{" " * indent}</tr>\n')
-
-    def write_td(self, content: str, attrs=None, indent=0):
-        if attrs is None:
-            opening_tag = '<td>'
-        elif isinstance(attrs, str):
-            opening_tag = f'<td {attrs}>'
-        else:
-            opening_tag = '<td ' + " ".join(f"{k}={v}" for k, v in attrs.items()) + '>'
-        self.stream.write(f'  {opening_tag}\n')
-        self.stream.write(f'{content}\n')
-        self.stream.write('  </td>\n')
-
-    def write_to_file(self):
-        self.path.write_text(self.stream.getvalue())
-
-
-def pretty_json(json_obj: dict):
-    return '<pre>'+json.dumps(json_obj, indent=2)+'</pre>'
-
-
-def sorted_pairs(d: dict):
-    """Return the dictionary as a list of sorted <key, value> where the sorting
-    is done on the 'duration' property of the values in the dictionary."""
-    sort_function = lambda item: item[1]['duration']
-    return [(k, v) for k, v in 
-            sorted(d.items(), key=sort_function, reverse=True)]
-

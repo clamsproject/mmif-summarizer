@@ -7,7 +7,7 @@ JS_PAGE = 'main.js'
 VIEWS_PAGE = 'views.html'
 TIMEFRAMES_PAGE = 'timeframes.html'
 CORRELATIONS_PAGE = 'timeframes-corr.html'
-TRANSCRIPT_PAGE = 'transcripts.html'
+TRANSCRIPT_PAGE = 'transcript.html'
 CAPTIONS_PAGE = 'captions.html'
 ENTITIES_PAGE = 'entities.html'
 

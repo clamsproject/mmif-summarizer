@@ -1,0 +1,128 @@
+<html>
+
+<head>
+<link rel="stylesheet" href="main.css">
+<script src="main.js"></script>
+</head>
+
+<body>
+
+<h2>{{ title }}</h2>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Command that originated this mini-site                             -->
+<!-- ------------------------------------------------------------------ -->
+
+{% if origin %}
+<pre class=origin>{{ origin }}</pre>
+{% endif %}
+
+<!-- ------------------------------------------------------------------ -->
+<!-- General document information                                       -->
+<!-- ------------------------------------------------------------------ -->
+
+<div class=section>
+<strong>General info</strong>
+<blockquote>
+<table>
+{% for feat, val in docinfo.items() %}
+<tr>
+  <td>{{ feat }}</td>
+  <td>{{ val }}</td>
+</td>
+{% endfor %}
+</table>
+</blockquote>
+</div>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Documents and views                                                -->
+<!-- ------------------------------------------------------------------ -->
+
+<div class=section>
+<strong>Documents and views</strong>
+<blockquote>
+<table>
+{% for doc in summary['documents'] %}
+<tr>
+	<td>{{ doc['id'] }}</td>
+	<td>{{ doc['type'] }}</td>
+	<td>{{ doc['location'] }}</td>
+</tr>
+{% endfor %}
+</table>
+
+<p>
+<table>
+{% for view in summary['views'] %}
+<tr>
+	<td>{{view['id']}}</td>
+	<td><a href="views.html#{{ view['id'] }}">{{ view['app'] }}</td>
+	<td align=right>{{view['annotation_count']}}</td>
+</tr>
+{% endfor %}
+<!--
+<tr>
+  <td>v_0</td>
+  <td><a href=views.html#v_0>http://apps.clams.ai/swt-detection/v7.4</a></td>
+  <td align=right>30,614</td>
+</tr>
+-->
+</table>
+</blockquote>
+</div>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- TimeFrame statistics                                               -->
+<!-- ------------------------------------------------------------------ -->
+
+{% if summary['timeframe_stats'] %}
+<div class=section>
+<strong>TimeFrame statistics per application</strong>
+<blockquote>
+{% for app in tfstats %}
+<p><a href="{{ app }}">{{ app }}</a></p>
+<table>
+<tr>
+  <td>&nbsp;</td>
+  <td colspan=2>cumulative</td>
+  <td>count</td>
+  <td>average</td>
+  <td>first&nbsp;at</td>
+  <td>longest&nbsp;at</td>
+</tr>
+{% for label in tfstats[app] %}
+<tr>
+  <td>{{ label }}</td>
+  <td align=right>{{ tfstats[app][label]['duration'] }}</td>
+  <td align=right>{{ "$%.2f" | format(tfstats[app][label]['coverage']) }}%</td>
+  <td align=right>{{ tfstats[app][label]['count'] }}</td>
+  <td align=right>{{ tfstats[app][label]['average'] }}</td>
+  <td align=right>{{ tfstats[app][label]['first'] }}</td>
+  <td align=right>{{ tfstats[app][label]['longest'] }}</td>
+</tr>
+{% endfor %}
+{% endfor %}
+</table>
+</blockquote>
+</div>
+{% endif %}
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Links to summaries                                                 -->
+<!-- ------------------------------------------------------------------ -->
+
+<div class=section>
+<strong>Available summaries</strong>
+<blockquote>
+[ <a href="{{summaries[0][1]}}">{{ summaries[0][0] }}</a>
+{% for summary in summaries[1:] %}
+| <a href="{{summary[1]}}">{{ summary[0] }}</a>
+{% endfor %}
+]
+</blockquote>
+</div>
+
+</body>
+
+</html>

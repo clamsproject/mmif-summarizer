@@ -1,0 +1,102 @@
+<html>
+
+<head>
+<link rel="stylesheet" href="main.css">
+<script src="main.js"></script>
+</head>
+
+<body>
+
+<h2>{{ title }}</h2>
+
+<h3>Views</h3>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- List of views                                                      -->
+<!-- ------------------------------------------------------------------ -->
+
+<div class=section>
+<table class=noborder>
+{% for view in summary['views'] %}
+<tr>
+  <td><a href="#{{ view['id'] }}">{{ view["id"] }} &mdash; {{ view["app"] }}</a></td>
+</tr>
+{% endfor %}
+</table>
+</div>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- The views themselves                                               -->
+<!-- ------------------------------------------------------------------ -->
+
+{% for view in summary['views'] %}
+<div class=section id={{ view['id'] }}>
+<strong>{{ view['id'] }}</strong>
+<blockquote>
+<table>
+<tr>
+  <td>app</td>
+  <td><a href="#{{ view['id'] }}">{{ view["app"] }}</a></td>
+</tr>
+<tr>
+  <td>timestamp</td>
+  <td>{{ view['timestamp'] }}</td>
+</tr>
+{% if not view['id'] in warnings %}
+<tr valign="top">
+  <td>contains</td>
+  <td>
+    {% for atype in view['contains'] %}
+    <a href={{ atype }}>{{ atype }}</a><br/>
+    {% endfor %}
+  </td>
+</tr>
+<tr valign="top">
+  <td>annotations</td>
+  <td>
+  <table class=noborder>
+  {% for attype in view['annotation_types'] | sort %}
+  <tr>
+    <td>{{ attype }}</td>
+    <td>&nbsp;</td>
+    <td align=right>{{ view['annotation_types'][attype] }}</td>
+  </tr>
+  {% endfor %}
+  <tr>
+    <td>TOTAL</td>
+    <td>{{ view['annotation_count'] }}</td>
+  </tr>
+  </table>
+  </td>
+</tr>
+{% endif %}
+<tr valign=top>
+  <td>parameters</td>
+  <td>{{ display(view['parameters']) }}</td>
+</tr>
+<tr valign=top>
+  <td>appConfiguration
+  </td>
+  <td>
+    <button onclick="toggle('conf-{{ view['id']}}')">Show/Hide</button>
+    <pre id=conf-{{ view['id'] }} style="display: none">{{ display(view['appConfiguration']) }}</pre>
+  </td>
+</tr>
+{% if  view['id'] in warnings %}
+<tr valign=top>
+  <td>warnings</td>
+  <td>
+    {% for warning in warnings[view['id']] %}
+    {{ warning }}<br/>
+    {% endfor %}
+  </td>
+</tr>
+{% endif %}
+</table>
+</blockquote>
+</div>
+{% endfor %}
+
+</body>
+</html>
+
