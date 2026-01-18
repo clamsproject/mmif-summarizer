@@ -8,12 +8,12 @@
 
 <body>
 
-<h2>{{ title }}</h2>
+<h2>{{ summary.name }}</h2>
 
 <h3>Entities</h3>
 
 <div class=section>
-<p>Only printing the following entity types: {{ ', '.join(categories) }}.</p>
+<p>Only printing the following entity types: {{ ', '.join(summary.categories) }}.</p>
 
 <table>
 <tr>
@@ -24,7 +24,7 @@
   <td>start</td>
   <td>end</td>
 </tr>
-{% for entity in entities %}
+{% for entity in summary.entities %}
 <tr>
   <td valign=top>{{ entity.text }}</td>
   <td>{{ entity.instances[0].cat }}</td>

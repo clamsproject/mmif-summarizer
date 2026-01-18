@@ -8,11 +8,11 @@
 
 <body>
 
-<h2>{{ title }}</h2>
+<h2>{{ summary.name }}</h2>
 
 <h3>Timeframes</h3>
 
-{% for app in timeframes %}
+{% for app in summary.timeframes %}
 <div class=section>
 <strong>{{ app }}</strong>
 <blockquote>
@@ -24,7 +24,7 @@
   <td>label</td>
   <td>score</td>
 </tr>
-{% for timeframe in timeframes[app] %}
+{% for timeframe in summary.timeframes[app] %}
 <tr>
   <td>{{ timeframe.start }}</td>
   <td>{{ timeframe.end }}</td>

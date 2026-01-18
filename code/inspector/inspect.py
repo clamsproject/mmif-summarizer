@@ -27,6 +27,7 @@ Commands:
 
 Use the first three for index, views and timeframes
 Use the first for captions
+Use the second for the transcript
 Use the third for correlations
 Use the fourth for named entities
 
@@ -47,12 +48,11 @@ from pathlib import Path
 
 from jinja2 import Template
 
-from inspector.utils import timestamp, pretty_json
+from inspector.utils import timestamp, pretty_json, sorted_pairs
 
 from inspector.config import INDEX_PAGE, CSS_PAGE, JS_PAGE, VIEWS_PAGE
 from inspector.config import TIMEFRAMES_PAGE, CORRELATIONS_PAGE, TRANSCRIPT_PAGE
 from inspector.config import CAPTIONS_PAGE, ENTITIES_PAGE
-from inspector.config import a_right, a_topleft, a_top, hide
 
 
 entity_categories = ['PERSON', 'ORG', 'DATE', 'GPE', 'NORP', 'LANGUAGE']
@@ -189,52 +189,54 @@ class EntityInstance:
         return (time_point, start, end)
 
 
-def create_html(infile: str, outdir: str):
+class Summary:
 
+    """Instance of this class are go betweens for the summarizer json object and 
+    the jinja templates that render the pages. Takes information from the summary
+    object and stores it in a way that make it easy on the eye for the template."""
+
+    #def __init__(self, infile: str, name: str, summary: dict):
+    def __init__(self, inpath: Path, summary: dict):
+        self.name = inpath.stem
+        self.docinfo = document_info(inpath, summary)
+        self.documents = summary['documents']
+        self.timeframe_stats = timeframe_statistics(summary)
+        self.summaries = available_summaries(summary)
+        self.views = summary['views']
+        self.warnings = all_warnings(summary)
+        self.timeframes = all_timeframes(summary)
+        self.captions = [Caption(c) for c in summary['captions']]
+        self.transcript = [TranscriptLine(line) for line in summary['transcript']]
+        self.categories = entity_categories
+        self.entities = [Entity(e) for e in summary['entities']]
+        self.entities = [e for e in self.entities if e.has_instances()]
+        # this is somewhat ugly, once there is a warnings or view class maybe it
+        # can go there
+        self.display = pretty_json
+
+
+def create_www(infile: str, outdir: str):
     inpath = Path(infile)
     outpath = create_directory(outdir)
+    summary = Summary(inpath, json.loads(inpath.open().read()))
+    render_template(INDEX_PAGE, summary, outpath)
+    render_template(VIEWS_PAGE, summary, outpath)
+    render_template(TIMEFRAMES_PAGE, summary, outpath)
+    render_template(CAPTIONS_PAGE, summary, outpath)
+    render_template(TRANSCRIPT_PAGE, summary, outpath)
+    render_template(ENTITIES_PAGE, summary, outpath)
 
-    summary = json.loads(inpath.open().read())
-    docinfo = document_info(infile, summary)
-    tf_stats = timeframe_statistics(summary)
-    summaries = available_summaries(summary)
-    warnings = all_warnings(summary)
-    timeframes = all_timeframes(summary)
-    captions = [Caption(c) for c in summary['captions']]
-    transcript = [TranscriptLine(line) for line in summary['transcript']]
-    entities = [Entity(e) for e in summary['entities']]
-    entities = [e for e in entities if e.has_instances()]
 
-    template = Template(Path('inspector/templates/index.html').read_text())
-    rendered_template = template.render(
-        title=inpath.stem, summary=summary, origin=None, docinfo=docinfo,
-        tfstats=tf_stats, summaries=summaries)
-    (outpath / INDEX_PAGE).write_text(rendered_template)
-
-    template = Template(Path('inspector/templates/views.html').read_text())
-    rendered_template = template.render(
-        title=inpath.stem, summary=summary, warnings=warnings, display=pretty_json)
-    (outpath / VIEWS_PAGE).write_text(rendered_template)
-
-    template = Template(Path('inspector/templates/timeframes.html').read_text())
-    rendered_template = template.render(
-        title=inpath.stem, timeframes=timeframes)
-    (outpath / TIMEFRAMES_PAGE).write_text(rendered_template)
-
-    template = Template(Path('inspector/templates/captions.html').read_text())
-    rendered_template = template.render(
-        title=inpath.stem, captions=captions)
-    (outpath / CAPTIONS_PAGE).write_text(rendered_template)
-
-    template = Template(Path(f'inspector/templates/{TRANSCRIPT_PAGE}').read_text())
-    rendered_template = template.render(
-        title=inpath.stem, transcript=transcript)
-    (outpath / TRANSCRIPT_PAGE).write_text(rendered_template)
-
-    template = Template(Path(f'inspector/templates/{ENTITIES_PAGE}').read_text())
-    rendered_template = template.render(
-        title=inpath.stem, categories=entity_categories, entities=entities)
-    (outpath / ENTITIES_PAGE).write_text(rendered_template)
+def render_template(name: str, summary: Summary, path=None):
+    """Render a template and return it or write it to a path if one was provided.
+    This all assumes that the name of the template in the templates directory is 
+    the same as the name of the file created in the static site."""
+    template = Template(Path(f'inspector/templates/{name}').read_text())
+    rendered_template = template.render(summary=summary)
+    if path is None:
+        return rendered_template
+    else:
+        (path / name).write_text(rendered_template)
 
 
 def create_directory(directory: str) -> Path:
@@ -262,23 +264,14 @@ def create_resources(outpath: Path):
     js_target.write_text(js_source.read_text())
 
 
-def origin_command() -> str:
-    """Create pretty print version for command as it was entered on the CLI."""
-    command = " ".join(sys.argv)
-    command = command.replace(' -i', ' \\\n    -i')
-    command = command.replace(' -o', ' \\\n    -o')
-    command = command.replace(' --html', ' \\\n    --html')
-    return command
-
-
-def document_info(infile: str, summary: dict) -> dict:
+def document_info(inpath: Path, summary: dict) -> dict:
     """Collect document-level information from the summary."""
     mv = summary["mmif_version"]
     doc = summary['document']
     return {
         'MMIF Version': f'<a href="{mv}">{mv}</a>',
         'Size of MMIF file': f"{doc['size']:,d}    ",
-        'Size of summary': f'{os.path.getsize(infile):,d}',
+        'Size of summary': f'{os.path.getsize(inpath):,d}',
         'Video duration': doc.get('duration_ts', 'Not available'),
         'Frames per second': doc.get('fps', 'Not available') }
 
@@ -365,7 +358,7 @@ def all_timeframes(summary: dict) -> dict:
 # The following is some legacy code from when we did not use jinja templates. It
 # is kept here for now because we may want to reintroduce the correlations (they
 # were removed because they weren't doing a lot on the data we were working with
-# and besides it was somewhat unclear what we wanted it do do exactly).
+# and besides it was somewhat unclear what we wanted it to do exactly).
 
 def create_html_correlations(infile: str, outpath: Path, summary: dict):
     page = Html(infile, outpath / CORRELATIONS_PAGE, 'Correlations')

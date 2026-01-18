@@ -7,15 +7,8 @@
 
 <body>
 
-<h2>{{ title }}</h2>
+<h2>{{ summary.name }}</h2>
 
-<!-- ------------------------------------------------------------------ -->
-<!-- Command that originated this mini-site                             -->
-<!-- ------------------------------------------------------------------ -->
-
-{% if origin %}
-<pre class=origin>{{ origin }}</pre>
-{% endif %}
 
 <!-- ------------------------------------------------------------------ -->
 <!-- General document information                                       -->
@@ -25,7 +18,7 @@
 <strong>General info</strong>
 <blockquote>
 <table>
-{% for feat, val in docinfo.items() %}
+{% for feat, val in summary.docinfo.items() %}
 <tr>
   <td>{{ feat }}</td>
   <td>{{ val }}</td>
@@ -43,7 +36,7 @@
 <strong>Documents and views</strong>
 <blockquote>
 <table>
-{% for doc in summary['documents'] %}
+{% for doc in summary.document %}
 <tr>
 	<td>{{ doc['id'] }}</td>
 	<td>{{ doc['type'] }}</td>
@@ -54,7 +47,7 @@
 
 <p>
 <table>
-{% for view in summary['views'] %}
+{% for view in summary.views %}
 <tr>
 	<td>{{view['id']}}</td>
 	<td><a href="views.html#{{ view['id'] }}">{{ view['app'] }}</td>
@@ -76,11 +69,11 @@
 <!-- TimeFrame statistics                                               -->
 <!-- ------------------------------------------------------------------ -->
 
-{% if summary['timeframe_stats'] %}
+{% if summary.timeframe_stats or True %}
 <div class=section>
 <strong>TimeFrame statistics per application</strong>
 <blockquote>
-{% for app in tfstats %}
+{% for app in summary.timeframe_stats %}
 <p><a href="{{ app }}">{{ app }}</a></p>
 <table>
 <tr>
@@ -91,15 +84,15 @@
   <td>first&nbsp;at</td>
   <td>longest&nbsp;at</td>
 </tr>
-{% for label in tfstats[app] %}
+{% for label in summary.timeframe_stats[app] %}
 <tr>
   <td>{{ label }}</td>
-  <td align=right>{{ tfstats[app][label]['duration'] }}</td>
-  <td align=right>{{ "$%.2f" | format(tfstats[app][label]['coverage']) }}%</td>
-  <td align=right>{{ tfstats[app][label]['count'] }}</td>
-  <td align=right>{{ tfstats[app][label]['average'] }}</td>
-  <td align=right>{{ tfstats[app][label]['first'] }}</td>
-  <td align=right>{{ tfstats[app][label]['longest'] }}</td>
+  <td align=right>{{ summary.timeframe_stats[app][label]['duration'] }}</td>
+  <td align=right>{{ "$%.2f" | format(summary.timeframe_stats[app][label]['coverage']) }}%</td>
+  <td align=right>{{ summary.timeframe_stats[app][label]['count'] }}</td>
+  <td align=right>{{ summary.timeframe_stats[app][label]['average'] }}</td>
+  <td align=right>{{ summary.timeframe_stats[app][label]['first'] }}</td>
+  <td align=right>{{ summary.timeframe_stats[app][label]['longest'] }}</td>
 </tr>
 {% endfor %}
 {% endfor %}
@@ -115,8 +108,8 @@
 <div class=section>
 <strong>Available summaries</strong>
 <blockquote>
-[ <a href="{{summaries[0][1]}}">{{ summaries[0][0] }}</a>
-{% for summary in summaries[1:] %}
+[ <a href="{{ summary.summaries[0][1] }}">{{ summary.summaries[0][0] }}</a>
+{% for summary in summary.summaries[1:] %}
 | <a href="{{summary[1]}}">{{ summary[0] }}</a>
 {% endfor %}
 ]

@@ -8,13 +8,13 @@
 
 <body>
 
-<h2>{{ title }}</h2>
+<h2>{{ summary.name }}</h2>
 
 <h3>Captions</h3>
 
 <div class=section>
 <table class=transcript>
-{% for caption in captions %}
+{% for caption in summary.captions %}
 <tr valign="top">
   <td align=right>{{ caption.timepoint }}</td>
   <td>{{ caption.identifier }}</td>
