@@ -1,6 +1,6 @@
 [project]
 name = "inspector-mv"
-version = "0.0.2"
+version = "0.0.5"
 description = "MMIF Inspector"
 readme = "inspector/README.md"
 requires-python = ">=3.10"
@@ -21,9 +21,4 @@ build-backend = "hatchling.build"
 packages = ["inspector"]
 
 [tool.hatch.build.targets.sdist]
-exclude = [
-  "/examples",
-  "/scripts",
-  "out/",
-  "cpb-aacip-*.mmif"
-]
+only-include = ["inspector", "pyproject.toml"]

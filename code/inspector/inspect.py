@@ -1,40 +1,9 @@
 """
 
-The inspector generates a mini website in HTML_DIR with pages for views,
-timeframes, transcript and captions.
+The inspector takes a MMIF summary and generates a mini website in HTML_DIR with
+pages for views, timeframes, transcript and captions.
 
 It uses Jinja2 templates to create individual pages.
-
-At the moment it only runs standalone, that is, you run it to create a static
-website
-
-Soon I will be tweaked to work in the contenxt of the MMIF Storage Server as
-well. It remains to be figured out what updates here are going to be needed for
-that and what kinds of changes need to be made, especially to the links and the
-stylesheet and javascript files. For example for the links between the pages the
-Flask site makes liberal use of get variables. Somehow those would need to be
-used to determine what template to load.
-
-More temporary developer notes:
-
-Jinja string formatting:
-
-https://stackoverflow.com/questions/45698629/jinja2-padding-and-aligning-strings
-https://support.sendwithus.com/jinja/formatting_numbers/
-https://dnmtechs.com/formatting-numbers-in-jinja2-in-python-3/
-
-Commands:
-
-Use the first three for index, views and timeframes
-Use the first for captions
-Use the second for the transcript
-Use the third for correlations
-Use the fourth for named entities
-
-$ rm -rf x ; python run_inspector.py -i out/summaries/summaries/cpb-aacip-225-12z34w2c.json -o x
-$ rm -rf x ; python run_inspector.py -i out/summaries/summaries/cpb-aacip-507-028pc2tq55.json -o x
-$ rm -rf x ; python run_inspector.py -i out/summaries/summaries/cpb-aacip-526-z60bv7c69m.json -o x
-$ rm -rf x ; python run_inspector.py -i examples/pipelines/spacy-v1.1/cpb-aacip-507-9882j68s35-transcript.json -o x
 
 """
 
@@ -44,6 +13,7 @@ import io
 import sys
 import json
 import math
+import importlib.resources
 from pathlib import Path
 
 from jinja2 import Template
@@ -195,7 +165,6 @@ class Summary:
     the jinja templates that render the pages. Takes information from the summary
     object and stores it in a way that make it easy on the eye for the template."""
 
-    #def __init__(self, infile: str, name: str, summary: dict):
     def __init__(self, inpath: Path, summary: dict):
         self.name = inpath.stem
         self.docinfo = document_info(inpath, summary)
@@ -227,16 +196,18 @@ def create_www(infile: str, outdir: str):
     render_template(ENTITIES_PAGE, summary, outpath)
 
 
-def render_template(name: str, summary: Summary, path=None):
-    """Render a template and return it or write it to a path if one was provided.
-    This all assumes that the name of the template in the templates directory is 
-    the same as the name of the file created in the static site."""
-    template = Template(Path(f'inspector/templates/{name}').read_text())
+def render_template(name: str, summary: Summary, out_dir=None):
+    """Render a template and return it or write the HTML it to a file in the
+    output directory if one was provided. This all assumes that the name of
+    the template in the templates directory is the same as the name of the
+    file created in the static site."""
+    template_path = importlib.resources.files("inspector.templates").joinpath(name)
+    template = Template(template_path.read_text())
     rendered_template = template.render(summary=summary)
-    if path is None:
+    if out_dir is None:
         return rendered_template
     else:
-        (path / name).write_text(rendered_template)
+        (out_dir / name).write_text(rendered_template)
 
 
 def create_directory(directory: str) -> Path:

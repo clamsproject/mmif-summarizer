@@ -32,7 +32,7 @@ This is now obsolete here and should be moved to mmif-python if we want to keep 
 
 $ python run.py --inspect DIRECTORY
 
-DIRECTORY is a directory with MMIF SUmmaries. This will ask the user to enter an output
+DIRECTORY is a directory with MMIF Summaries. This will ask the user to enter an output
 directory. It walks trough all summaries in the input directory  and creates mini-websites
 for them.
 
@@ -42,15 +42,16 @@ for them.
 
 import os
 import sys
+import json
 import datetime
 import argparse
 import subprocess
 from pathlib import Path
 from subprocess import Popen, PIPE
 
+sys.path.extend('..', '../../../mmif-python/')
 from mmif.serialize import Mmif
-
-from inspector import create_html
+from inspector import create_www
 
 
 
@@ -132,7 +133,7 @@ def inspect(directory: str):
 def inspect_file(summary_file: Path, outdir: Path, links: dict):
     summary_file_hash = abs(hash(summary_file))
     html_dir = Path(outdir, str(summary_file_hash))
-    create_html(summary_file, html_dir)
+    create_www(summary_file, html_dir)
     links[summary_file] = summary_file_hash
 
 
@@ -210,13 +211,20 @@ def add_link_to_index_file(outdir: str, fname: str, links: dict):
         fh.write(f'<tr><td>{pipeline_name}<td>{link}</tr>\n')
 
 
+def pretty_print(fname: str):
+    obj = json.load(open(fname))
+    print(json.dumps(obj, indent=2))
+
+
 def argparser():
+    help_pretty = 'pretty print a json file'
     help_sum = 'summarize all available MMIF files in DIR'
     help_inspect = 'create mini-websites for all summaries in DIR'
     help_cut = 'load MMIF file and keep only annotations within a timeframe'
     help_start = 'with --cut option, start of timeframe'
     help_end = 'with --cut option, end of timeframe'
     parser = argparse.ArgumentParser()
+    parser.add_argument('--pretty', metavar='DIR', help=help_pretty)
     parser.add_argument('--summarize', metavar='DIR', help=help_sum)
     parser.add_argument('--inspect', metavar='DIR', help=help_inspect)
     parser.add_argument('--load', metavar='MMIF_FILE', help='load MMIF file')
@@ -230,6 +238,9 @@ def argparser():
 if __name__ == '__main__':
 
     args = argparser().parse_args()
+
+    if args.pretty:
+        pretty_print(args.pretty)
 
     if args.load:
         load_mmif(args.load)

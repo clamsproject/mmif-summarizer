@@ -19,6 +19,6 @@ code/dot-out*
 code/out
 code/out-*
 
-# Some uv-related files that we are not using (yet?)
+# Some uv-related files that we are not using yet
 code/.python-version
 code/uv.lock

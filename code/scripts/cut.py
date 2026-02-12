@@ -39,11 +39,6 @@ def main(fname: str, start: int, end: int):
     #print(); graph.pp(skip_timepoints=True)
     print(); graph.pp_statistics()
     
-    
-
-
-    exit()
-
     removed = set()
     for view in mmif.views:
         app = view.metadata.app
