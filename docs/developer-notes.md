@@ -2,6 +2,8 @@
 
 Mostly descriptions of the data that the summarizer has to work with.
 
+> These should be moved elsewhere now that this repo is just for the inspector.
+
 
 ## Scope
 

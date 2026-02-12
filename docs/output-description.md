@@ -1,11 +1,11 @@
-# Summarizer output description
-
-Both for the JSON file and the web page.
+# Inspector output description
 
 
-### Summary example
+### Input
 
-Here is a fragment of the summary of a MMIF file, one that was created with the CLAMS Whisper app version v8 (see [https://apps.clams.ai/whisper-wrapper/v8/](https://apps.clams.ai/whisper-wrapper/v8/) which has a transcript and time frames.
+The input was a summary of a MMIF file, one that was created with the CLAMS Whisper app version v8 (see [https://apps.clams.ai/whisper-wrapper/v8/](https://apps.clams.ai/whisper-wrapper/v8/) which has a transcript and time frames.
+
+Below is a fragment of that summary.
 
 ```json
 {
@@ -114,12 +114,12 @@ The website generated from the above summary is has an index file and files for 
 
 The views:
 
-<img src="page-views.png" width=500 border=1>
+<img src="images/page-views.png" width=500 border=1>
 
 The transcript:
 
-<img src="page-transcript.png" width=500 border=1>
+<img src="images/page-transcript.png" width=500 border=1>
 
 The time frames:
 
-<img src="page-timeframes.png" width=500 border=1>
+<img src="images/page-timeframes.png" width=500 border=1>

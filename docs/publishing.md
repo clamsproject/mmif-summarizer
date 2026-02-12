@@ -1,6 +1,6 @@
 # Publishing the Inspector
 
-Notes on how to publish the inspector as a PyPI package. Adding more details compared to the module readme file.
+Verbose notes on how to publish the inspector as a PyPI package. Adding more details compared to the module readme file.
 
 
 ## Starting point
@@ -63,7 +63,7 @@ inspect = "inspector:main"
 
 **The build system**
 
-I am trying to use hatchling for the back end, which so far seems to work fine. I fotgot why I choose this particular backend.
+I am using hatchling for the back end, which so far seems to work fine. I forgot why I choose this particular backend.
 
 ```toml
 [build-system]
@@ -158,7 +158,7 @@ Anyway, with
 $ pip install -i https://test.pypi.org/simple/ inspector-mv
 ```
 
-there used to be the following ludicrous error:
+there used to be the following error:
 
 ```
 Looking in indexes: https://test.pypi.org/simple/
@@ -208,18 +208,19 @@ One change could be to use the src layout, but I also want to see whether projec
 
 > I tried it with the hatchling back end, should also try it with the setuptools back end.
 
-For hatchling you can add the following to `pyproject.py`:
+For hatchling you can add the following to `pyproject.py` (see [https://hatch.pypa.io/1.9/build/](https://hatch.pypa.io/1.9/build/)):
 
 ```toml
 [tool.hatch.build.targets.sdist]
-exclude = [
-  "/summarizer",
-  "/scripts",
-  "/out",
-]
+exclude = ["/scripts", "/out"]
 ```
 
-I found the above at [https://hatch.pypa.io/1.9/build/](https://hatch.pypa.io/1.9/build/). I do not know whether there are options to include files as well.
+Or instead just do this:
+
+```toml
+[tool.hatch.build.targets.sdist]
+only-include = ["inspector", "pyproject.toml"]
+```
 
 
 ### Fixing the license
@@ -228,7 +229,7 @@ With the above configuration you do not get a nice license printed on the PyPI s
 
 <img src="license.png" width=150 border=1>
 
-The SPDX link is pretty useless and I do not like that it says "License Expression" instead of just "License". Sadly, it looks like what I get is actually intentional (see [https://hugovk.dev/blog/2025/improving-licence-metadata/](https://hugovk.dev/blog/2025/improving-licence-metadata/)). And the  [SPDX link](https://spdx.org/licenses/) actually leads to a list of all licenses.
+The SPDX link is pretty useless and I do not like that it says "License Expression" instead of just "License". Sadly, it looks like that is all intentional (see [https://hugovk.dev/blog/2025/improving-licence-metadata/](https://hugovk.dev/blog/2025/improving-licence-metadata/)). And the  [SPDX link](https://spdx.org/licenses/) actually leads to a list of all licenses.
 
 We could still use a classifier:
 
