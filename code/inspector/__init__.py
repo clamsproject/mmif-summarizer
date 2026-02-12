@@ -1,11 +1,11 @@
 
 import argparse
 
-from inspector.inspect import create_html
+from inspector.inspect import create_www
 
 
 def argparser():
-    parser = argparse.ArgumentParser(description='Create a mini website for a JSON Summary')
+    parser = argparse.ArgumentParser(description='Create a mini website for a MMIF Summary')
     parser.add_argument('-i', metavar='IN_FILE', help='input JSON summary file', required=True)
     parser.add_argument('-o', metavar='HTML_DIR', help='output HTML files', required=True)
     return parser
@@ -14,4 +14,4 @@ def argparser():
 def main():
     parser = argparser()
     args = parser.parse_args()
-    create_html(args.i, args.o)
+    create_www(args.i, args.o)

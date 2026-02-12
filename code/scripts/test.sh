@@ -1,18 +1,18 @@
-# Script to test the summarizer command line script straight from a 
+# Script to test the inspect command line script straight from a 
 # local distribution
 #
-# To run this, just enter the distribution as the single option. I tend to run
-# this from the code directory:
+# To run this, enter the distribution and the directory where to test it.
 #
-#     sh test.sh ../dist/summarizer_mv-0.2.4-py3-none-any.whl 
+#     sh test.sh ../dist/inspector_mv-0.0.5-py3-none-any.whl tmp-test
 #
-# This will create a directory named out/test-summarizer
+# The first argument is the distribution to test and the second is the playpen
+# in which the test is run.
 
-echo "Testing $1"
-mkdir out/test-summarizer
-cp $1 out/test-summarizer
-cd out/test-summarizer
-python3 -m venv .venv-test
-source .venv-test/bin/activate
+echo "Testing $1 in $2"
+mkdir $2
+cp $1 $2
+cd $2
+python3 -m venv .venv
+source .venv/bin/activate
 pip install `basename $1`
-summarize -h
+.venv/bin/inspect -h

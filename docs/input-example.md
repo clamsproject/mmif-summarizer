@@ -1,9 +1,4 @@
-# Summarizer output description
-
-Both for the JSON file and the web page.
-
-
-### Summary example
+# Inspector input example
 
 Here is a fragment of the summary of a MMIF file, one that was created with the CLAMS Whisper app version v8 (see [https://apps.clams.ai/whisper-wrapper/v8/](https://apps.clams.ai/whisper-wrapper/v8/) which has a transcript and time frames.
 
@@ -104,22 +99,3 @@ Here is a fragment of the summary of a MMIF file, one that was created with the 
   }
 }
 ```
-
-One of the perks of the summary is that errors in the MMIF file will be more obvious. For example, in the case above it quite clear that something went wrong with the start end end times of the time frames (an error that also happens to be present in the MMIF output).
-
-
-### Webpage example
-
-The website generated from the above summary is has an index file and files for the views, transcript, captions and time frames. Again, you can see that something was amiss with the tiem frames.
-
-The views:
-
-<img src="page-views.png" width=500 border=1>
-
-The transcript:
-
-<img src="page-transcript.png" width=500 border=1>
-
-The time frames:
-
-<img src="page-timeframes.png" width=500 border=1>

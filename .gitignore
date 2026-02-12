@@ -14,10 +14,11 @@ code/test.sh
 code/examples/v9
 code/examples/dot-*
 code/examples/pipelines
+code/examples/cpb-aacip-*
 code/dot-out*
 code/out
 code/out-*
 
-# Some uv-related files that we are not using (yet?)
+# Some uv-related files that we are not using yet
 code/.python-version
 code/uv.lock

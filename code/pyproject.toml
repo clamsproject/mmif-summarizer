@@ -1,29 +1,24 @@
 [project]
-name = "summarizer-mv"
-version = "0.2.5"
-description = "MMIF Summarizer"
-readme = "summarizer/README.md"
+name = "inspector-mv"
+version = "0.0.5"
+description = "MMIF Inspector"
+readme = "inspector/README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "clams-python>=1.3.3",
+    "jinja2>=3.1.6",
 ]
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 
 [project.scripts]
-summarize = "summarizer:main"
+inspect = "inspector:main"
 
 [build-system]
 requires = ["hatchling >= 1.26"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["summarizer"]
+packages = ["inspector"]
 
 [tool.hatch.build.targets.sdist]
-exclude = [
-  "/examples",
-  "/scripts",
-  "out/",
-  "mmif-storage.*.txt",
-]
+only-include = ["inspector", "pyproject.toml"]
